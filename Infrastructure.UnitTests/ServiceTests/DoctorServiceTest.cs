@@ -17,6 +17,7 @@ namespace Infrastructure.UnitTests.ServiceTests
 {
     public class DoctorServiceTest
     {
+        private IService<Doctor, string> _doctorService;
         private readonly Mock<IRepository<Doctor, string>> _doctorRepoMock;
         private readonly Mock<IDoctorValidator> _doctorValidatorMock;
 
@@ -64,30 +65,39 @@ namespace Infrastructure.UnitTests.ServiceTests
                 .Setup(repo => repo
                     .Count())
                 .Returns(() => _allDoctors.Count);
+
+            // Get instances of the mocked repositories
+            IRepository<Doctor, string> repo = _doctorRepoMock.Object;
+            IDoctorValidator validator = _doctorValidatorMock.Object;
+
+            // Create a doctorService 
+            _doctorService = new DoctorService(repo, validator);
         }
 
         [Fact]
         public void CreateDoctorService_ValidCompanyRepository()
         {
             // arrange
-            IRepository<Doctor, string> repo = _doctorRepoMock.Object;
-            IDoctorValidator validator = _doctorValidatorMock.Object;
+           
 
             // act
-            IService<Doctor, string> service = new DoctorService(repo, validator);
+            
 
             // assert
-            Assert.NotNull(service);
+            Assert.NotNull(_doctorService);
         }
 
         [Fact]
         public void DoctorService_IsOfTypeIService()
         {
-            
-            IRepository<Doctor, string> repo = _doctorRepoMock.Object;
-            IDoctorValidator validator = _doctorValidatorMock.Object;
+            // arrange
 
-            new DoctorService(repo, validator).Should().BeAssignableTo<IService<Doctor, string>>();
+
+            // act
+
+
+            // assert
+            _doctorService.Should().BeAssignableTo<IService<Doctor, string>>();
         }
 
         #region GetAll
@@ -111,10 +121,8 @@ namespace Infrastructure.UnitTests.ServiceTests
 
             expected.TotalCount = _allDoctors.Count;
 
-            var service = new DoctorService(_doctorRepoMock.Object, _doctorValidatorMock.Object);
-
             // act
-            var result = service.GetAll(filter);
+            var result = _doctorService.GetAll(filter);
 
             // assert
             Assert.Equal(expected.List, result.List);
@@ -141,10 +149,8 @@ namespace Infrastructure.UnitTests.ServiceTests
 
             expected.TotalCount = _allDoctors.Count;
 
-            var service = new DoctorService(_doctorRepoMock.Object, _doctorValidatorMock.Object);
-
             // act
-            Action action = () => service.GetAll(filter);
+            Action action = () => _doctorService.GetAll(filter);
 
             // assert
             action.Should().Throw<InvalidDataException>().WithMessage("current page and items pr page can't be negative");
@@ -165,10 +171,8 @@ namespace Infrastructure.UnitTests.ServiceTests
             var d = new Doctor() {DoctorEmailAddress = "lumby98@gmail.com"};
             _allDoctors.Add(d.DoctorEmailAddress, d);
 
-            IService<Doctor, string> service = new DoctorService(_doctorRepoMock.Object, _doctorValidatorMock.Object);
-
             // act
-            var result = service.GetById(d.DoctorEmailAddress);
+            var result = _doctorService.GetById(d.DoctorEmailAddress);
 
             Assert.Equal(d, result);
 
@@ -189,10 +193,8 @@ namespace Infrastructure.UnitTests.ServiceTests
             // only d2 exists in the doctor repository
             _allDoctors.Add(d2.DoctorEmailAddress, d2);
 
-            var service = new DoctorService(_doctorRepoMock.Object, _doctorValidatorMock.Object);
-
             // act
-            Action action = () => service.GetById(d1.DoctorEmailAddress);
+            Action action = () => _doctorService.GetById(d1.DoctorEmailAddress);
 
             // assert
             action.Should().Throw<KeyNotFoundException>().WithMessage("Doctor does not exist");
@@ -218,10 +220,8 @@ namespace Infrastructure.UnitTests.ServiceTests
             // arrange
             var d1 = new Doctor() { DoctorEmailAddress = emailAddress, FirstName = firstname, LastName = lastname, PhoneNumber = phoneNumber, IsAdmin = isAdmin};
 
-            var service = new DoctorService(_doctorRepoMock.Object, _doctorValidatorMock.Object);
-
             // act
-            Action action = () => service.Add(d1);
+            Action action = () => _doctorService.Add(d1);
             // assert
             action.Should().NotThrow<Exception>();
             Assert.Contains(d1, _allDoctors.Values);
@@ -249,10 +249,8 @@ namespace Infrastructure.UnitTests.ServiceTests
 
             _allDoctors.Add(dOld.DoctorEmailAddress, dOld);
 
-            var service = new DoctorService(_doctorRepoMock.Object, _doctorValidatorMock.Object);
-
             // act
-            Action action = () => service.Edit(dNew);
+            Action action = () => _doctorService.Edit(dNew);
             // assert
             action.Should().NotThrow<Exception>();
             Assert.Equal(_doctorRepoMock.Object.GetById(dNew.DoctorEmailAddress), dNew);
@@ -272,10 +270,8 @@ namespace Infrastructure.UnitTests.ServiceTests
             var dNew = new Doctor() { DoctorEmailAddress = "emai@gmail.com", FirstName = "doctor", LastName = "doctor", PhoneNumber = "22222222", IsAdmin = false };
             _allDoctors.Add(dOld.DoctorEmailAddress, dOld);
 
-            var service = new DoctorService(_doctorRepoMock.Object, _doctorValidatorMock.Object);
-
             // act
-            Action action = () => service.Edit(dNew);
+            Action action = () => _doctorService.Edit(dNew);
             // assert
             action.Should().Throw<ArgumentException>().WithMessage("A doctor with this email does not exist");
 
@@ -298,10 +294,8 @@ namespace Infrastructure.UnitTests.ServiceTests
 
             _allDoctors.Add(dOld.DoctorEmailAddress, dOld);
 
-            var service = new DoctorService(_doctorRepoMock.Object, _doctorValidatorMock.Object);
-
             // act
-            Action action = () => service.Remove(dOld.DoctorEmailAddress);
+            Action action = () => _doctorService.Remove(dOld.DoctorEmailAddress);
             // assert
             action.Should().NotThrow<Exception>();
             Assert.Null(_doctorRepoMock.Object.GetById(dOld.DoctorEmailAddress));
@@ -319,10 +313,8 @@ namespace Infrastructure.UnitTests.ServiceTests
             // arrange
             var dOld = new Doctor() { DoctorEmailAddress = "email@gmail.com", FirstName = "doctor", LastName = "doctor", PhoneNumber = "22222222", IsAdmin = false };
 
-            var service = new DoctorService(_doctorRepoMock.Object, _doctorValidatorMock.Object);
-
             // act
-            Action action = () => service.Remove(dOld.DoctorEmailAddress);
+            Action action = () => _doctorService.Remove(dOld.DoctorEmailAddress);
             // assert
             action.Should().Throw<KeyNotFoundException>().WithMessage("This doctor does not exist");
 
