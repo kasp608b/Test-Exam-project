@@ -174,7 +174,7 @@ namespace Infrastructure.UnitTests.ServiceTests
         }
 
         [Fact]
-        public void CreateAppointment_ValidCompanyRepository()
+        public void AppointmentService_ValidCompanyRepository_ShouldNotBeNull()
         {
             // arrange
             IRepository<Appointment, int> appointmentRepo = _appointmentRepoMock.Object;
@@ -192,7 +192,7 @@ namespace Infrastructure.UnitTests.ServiceTests
         }
 
         [Fact]
-        public void AppointmentService_IsOfTypeIService()
+        public void AppointmentService_NormalInitialization_IsOfTypeIService()
         {
             IRepository<Appointment, int> appointmentRepo = _appointmentRepoMock.Object;
             IAppointmentValidator validator = _appointmentValidatorMock.Object;
@@ -207,19 +207,16 @@ namespace Infrastructure.UnitTests.ServiceTests
         }
 
         #region GetAll
-
-        [Fact]
-        public void GetAllAppointmentsTest_ShouldNotThrowException()
+        
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.GetAllValidAppointmentsEmptyFilter)]
+        public void GetAll_EmptyFilter_ShouldNotThrowException(List<Appointment> appointments, Filter filter)
         {
             //arrange
-            Appointment a1 = new Appointment() { AppointmentId = 1};
-            Appointment a2 = new Appointment(){AppointmentId = 2};
-            var appointments = new List<Appointment>() { a1, a2 };
-
-            Filter filter = new Filter() {};
-
-            _allAppointments.Add(a1.AppointmentId, a1);
-            _allAppointments.Add(a2.AppointmentId, a2);
+            foreach (var appointment in appointments)
+            {
+                _allAppointments.Add(appointment.AppointmentId, appointment);
+            }
             // the doctors in the repository
             var expected = new FilteredList<Appointment>()
                 {List = _allAppointments.Values.ToList(), TotalCount = _allAppointments.Count, FilterUsed = filter};
@@ -603,5 +600,24 @@ namespace Infrastructure.UnitTests.ServiceTests
         }
 
         #endregion
+
+        public static IEnumerable<object[]> GetData(TestData testData)
+        {
+
+            return testData switch
+            {
+                TestData.GetAllValidAppointmentsEmptyFilter => new List<object[]>
+                            {
+                                new object[] { new List<Appointment> { new Appointment() { AppointmentId = 1 } }, new Filter() {} },
+                            },
+
+                _ => null,
+            };
+        }
+
+        public enum TestData
+        {
+            GetAllValidAppointmentsEmptyFilter,
+        }
     }
 }
