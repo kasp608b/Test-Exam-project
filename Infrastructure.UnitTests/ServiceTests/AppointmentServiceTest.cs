@@ -17,6 +17,9 @@ namespace Infrastructure.UnitTests.ServiceTests
 {
     public class AppointmentServiceTest
     {
+        private IService<Appointment, int> _appointmentService;
+
+
         private readonly Mock<IRepository<Appointment, int>> _appointmentRepoMock;
         private readonly Mock<IAppointmentValidator> _appointmentValidatorMock;
 
@@ -24,6 +27,7 @@ namespace Infrastructure.UnitTests.ServiceTests
 
        
         private Mock<IRepository<Patient, string>> _patientRepoMock;
+
 
         private SortedDictionary<int, Appointment> _allAppointments;
         private SortedDictionary<string, Doctor> _allDoctors;
@@ -171,38 +175,31 @@ namespace Infrastructure.UnitTests.ServiceTests
                 .Returns(() => _allPatients.Count);
             #endregion
 
-        }
-
-        [Fact]
-        public void AppointmentService_ValidCompanyRepository_ShouldNotBeNull()
-        {
-            // arrange
+            // Get instances of the mocked repositories
             IRepository<Appointment, int> appointmentRepo = _appointmentRepoMock.Object;
             IAppointmentValidator validator = _appointmentValidatorMock.Object;
 
             IRepository<Doctor, string> doctorRepo = _doctorRepoMock.Object;
 
             IRepository<Patient, string> patientRepo = _patientRepoMock.Object;
-            // act
-            IService<Appointment, int> service = new AppointmentService(appointmentRepo, doctorRepo, patientRepo, validator);
 
+            // Create a AppointmentService 
+            _appointmentService = new AppointmentService(appointmentRepo, doctorRepo, patientRepo, validator);
+        }
+
+        [Fact]
+        public void AppointmentService_ValidCompanyRepository_ShouldNotBeNull()
+        {
             // assert
-            Assert.NotNull(service);
+            Assert.NotNull(_appointmentService);
 
         }
 
         [Fact]
         public void AppointmentService_NormalInitialization_IsOfTypeIService()
         {
-            IRepository<Appointment, int> appointmentRepo = _appointmentRepoMock.Object;
-            IAppointmentValidator validator = _appointmentValidatorMock.Object;
-
-            IRepository<Doctor, string> doctorRepo = _doctorRepoMock.Object;
-
-            IRepository<Patient, string> patientRepo = _patientRepoMock.Object;
             // act
-           new AppointmentService(appointmentRepo, doctorRepo, patientRepo, validator)
-               .Should()
+            _appointmentService.Should()
                .BeAssignableTo<IService<Appointment, int>>();
         }
 
@@ -223,10 +220,10 @@ namespace Infrastructure.UnitTests.ServiceTests
             
 
             expected.TotalCount = _allAppointments.Count;
-            var service = new AppointmentService(_appointmentRepoMock.Object, _doctorRepoMock.Object, _patientRepoMock.Object, _appointmentValidatorMock.Object);
+           
 
             // act
-            var result = service.GetAll(filter);
+            var result = _appointmentService.GetAll(filter);
 
             // assert
            Assert.Equal(expected.List, result.List);
@@ -235,7 +232,7 @@ namespace Infrastructure.UnitTests.ServiceTests
         }
 
         [Fact]
-        public void GetAllAppointmentsNegativPaggingTest_ShouldThrowException()
+        public void GetAll_CurrentPageNegativ_ShouldThrowException()
         {
             //arrange
             Appointment a1 = new Appointment() { AppointmentId = 1 };
@@ -252,10 +249,10 @@ namespace Infrastructure.UnitTests.ServiceTests
 
 
             expected.TotalCount = _allAppointments.Count;
-            var service = new AppointmentService(_appointmentRepoMock.Object, _doctorRepoMock.Object, _patientRepoMock.Object, _appointmentValidatorMock.Object);
+            
 
             // act
-            Action action = () => service.GetAll(filter);
+            Action action = () => _appointmentService.GetAll(filter);
 
             // assert
             action.Should().Throw<InvalidDataException>()
@@ -264,29 +261,26 @@ namespace Infrastructure.UnitTests.ServiceTests
 
         }
 
-        [Fact]
-        public void GetAllAppointmentsIndexOutOfBounds_ShouldThrowException()
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.GetAllIndexOutOfBounds)]
+        public void GetAll_IndexOutOfBounds_ShouldThrowException(List<Appointment> appointments, Filter filter)
         {
             //arrange
-            Appointment a1 = new Appointment() { AppointmentId = 1 };
-            Appointment a2 = new Appointment() { AppointmentId = 2 };
-            Appointment a3 = new Appointment() { AppointmentId = 3 };
+            foreach (var appointment in appointments)
+            {
+                _allAppointments.Add(appointment.AppointmentId, appointment);
+            }
 
-            Filter filter = new Filter() { CurrentPage = 2, ItemsPrPage = 3};
-
-            _allAppointments.Add(a1.AppointmentId, a1);
-            _allAppointments.Add(a2.AppointmentId, a2);
-            _allAppointments.Add(a3.AppointmentId, a3);
             // the doctors in the repository
             var expected = new FilteredList<Appointment>()
                 { List = _allAppointments.Values.ToList(), TotalCount = _allAppointments.Count, FilterUsed = filter };
 
 
             expected.TotalCount = _allAppointments.Count;
-            var service = new AppointmentService(_appointmentRepoMock.Object, _doctorRepoMock.Object, _patientRepoMock.Object, _appointmentValidatorMock.Object);
+          
 
             // act
-            Action action = () => service.GetAll(filter);
+            Action action = () => _appointmentService.GetAll(filter);
 
             // assert
             action.Should().Throw<ArgumentException>()
@@ -301,20 +295,14 @@ namespace Infrastructure.UnitTests.ServiceTests
         #region GetById
 
         [Theory]
-        [InlineData(1)]
-        [InlineData(2)]
-        public void GetById_WithValidId_ShouldNotThrowException(int id)
+        [MemberData(nameof(GetData), parameters: TestData.GetByIdValidIds)]
+        public void GetById_WithValidId_ShouldNotThrowException(Appointment a)
         {
             //arrange
-            Appointment a = new Appointment() { AppointmentId = id };
-
             _allAppointments.Add(a.AppointmentId, a);
             
-
-            var service = new AppointmentService(_appointmentRepoMock.Object, _doctorRepoMock.Object, _patientRepoMock.Object, _appointmentValidatorMock.Object);
-
             // act
-            var result = service.GetById(a.AppointmentId);
+            var result = _appointmentService.GetById(a.AppointmentId);
 
             // assert
             Assert.Equal(a, result);
@@ -330,12 +318,9 @@ namespace Infrastructure.UnitTests.ServiceTests
         [Fact]
         public void GetById_AppointmentDoesNotExist_ShouldThrowException()
         {
-            //arrange
-
-            var service = new AppointmentService(_appointmentRepoMock.Object, _doctorRepoMock.Object, _patientRepoMock.Object, _appointmentValidatorMock.Object);
-
+           
             // act
-            Action action = () => service.GetById(1);
+            Action action = () => _appointmentService.GetById(1);
 
             // assert
             action.Should().Throw<KeyNotFoundException>().WithMessage("An appointment with this id does not exist");
@@ -353,30 +338,17 @@ namespace Infrastructure.UnitTests.ServiceTests
         #region Add
 
         [Theory]
-        [InlineData(15, null, "Karl@gmail.com", "011200-4041")]
-        [InlineData(15, null, "Karl@gmail.com", null)]
-        [InlineData(15, "Knee checkup", "Charlie@gmail.uk", "110695-0004")]
-        public void Add_WithValidAppointment_ShouldNotThrowException( int durationInMin, string description, string doctorEmailAddress, string patientCpr)
+        [MemberData(nameof(GetData), parameters: TestData.AddWithValidAppointments)]
+        public void Add_WithValidAppointment_ShouldNotThrowException(Appointment a)
         {
             //arrange
-            DateTime date = DateTime.Now.AddDays(3);
-            Appointment a = new Appointment()
-            {
-                AppointmentDateTime = date,
-                DurationInMin = durationInMin,
-                Description = description,
-                DoctorEmailAddress = doctorEmailAddress,
-                PatientCpr = patientCpr
-            };
-
-            var service = new AppointmentService(_appointmentRepoMock.Object, _doctorRepoMock.Object, _patientRepoMock.Object, _appointmentValidatorMock.Object);
             _allDoctors.Add("Karl@gmail.com", new Doctor(){ DoctorEmailAddress = "Karl@gmail.com" });
             _allDoctors.Add("Charlie@gmail.uk", new Doctor() { DoctorEmailAddress = "Charlie@gmail.uk" });
             
             _allPatients.Add("011200-4041", new Patient() { PatientCPR = "011200-4041" });
             _allPatients.Add("110695-0004", new Patient() { PatientCPR = "110695-0004" });
             // act
-            Action action = () => service.Add(a);
+            Action action = () => _appointmentService.Add(a);
 
             // assert
             action.Should().NotThrow<Exception>();
@@ -391,26 +363,11 @@ namespace Infrastructure.UnitTests.ServiceTests
         }
 
         [Theory]
-        [InlineData(15, null, "Karl@gmail.com", "011200-4041")]
-        [InlineData(15, null, "Karl@gmail.com", null)]
-        [InlineData(15, "Knee checkup", "Charlie@gmail.uk", "110695-0004")]
-        public void Add_MissingRelations_ShouldThrowException(int durationInMin, string description, string doctorEmailAddress, string patientCpr)
+        [MemberData(nameof(GetData), parameters: TestData.AddWithValidAppointments)]
+        public void Add_MissingRelations_ShouldThrowException(Appointment a)
         {
-            //arrange
-            DateTime date = DateTime.Now.AddDays(3);
-            Appointment a = new Appointment()
-            {
-                AppointmentDateTime = date,
-                DurationInMin = durationInMin,
-                Description = description,
-                DoctorEmailAddress = doctorEmailAddress,
-                PatientCpr = patientCpr
-            };
-
-            var service = new AppointmentService(_appointmentRepoMock.Object, _doctorRepoMock.Object, _patientRepoMock.Object, _appointmentValidatorMock.Object);
-           
             // act
-            Action action = () => service.Add(a);
+            Action action = () => _appointmentService.Add(a);
 
             // assert
             action.Should().Throw<KeyNotFoundException>().WithMessage("This related entity does not exist");
@@ -428,27 +385,11 @@ namespace Infrastructure.UnitTests.ServiceTests
         #region Edit
 
         [Theory]
-        [InlineData(1, 15, null, null, null)]
-        [InlineData(1, 15, null, "Karl@gmail.com", "011200-4041")]
-        [InlineData(1, 15, null, null, "011200-4041")]
-        [InlineData(1, 15, null, "Karl@gmail.com", null)]
-        [InlineData(1, 15, "Knee checkup", "Charlie@gmail.uk", "110695-0004")]
-        public void Edit_WithValidAppointment_ShouldNotThrowException(int id, int durationInMin, string description, string doctorEmailAddress, string patientCpr)
+        [MemberData(nameof(GetData), parameters: TestData.EditWithValidAppointments)]
+        public void Edit_WithValidAppointment_ShouldNotThrowException(Appointment aNew)
         {
             //arrange
-            DateTime date = DateTime.Now.AddDays(3);
-            Appointment aNew = new Appointment()
-            {
-                AppointmentId = id,
-                AppointmentDateTime = date,
-                DurationInMin = durationInMin,
-                Description = description,
-                DoctorEmailAddress = doctorEmailAddress,
-                PatientCpr = patientCpr
-            };
-
-            var service = new AppointmentService(_appointmentRepoMock.Object, _doctorRepoMock.Object, _patientRepoMock.Object, _appointmentValidatorMock.Object);
-            var aOld = new Appointment() { AppointmentId = id};
+            var aOld = new Appointment() { AppointmentId = aNew.AppointmentId };
             _allAppointments.Add(aOld.AppointmentId, aOld);
             
             _allDoctors.Add("Karl@gmail.com", new Doctor() { DoctorEmailAddress = "Karl@gmail.com" });
@@ -457,7 +398,7 @@ namespace Infrastructure.UnitTests.ServiceTests
             _allPatients.Add("011200-4041", new Patient() { PatientCPR = "011200-4041" });
             _allPatients.Add("110695-0004", new Patient() { PatientCPR = "110695-0004" });
             // act
-            Action action = () => service.Edit(aNew);
+            Action action = () => _appointmentService.Edit(aNew);
 
             // assert
             action.Should().NotThrow<Exception>();
@@ -486,7 +427,7 @@ namespace Infrastructure.UnitTests.ServiceTests
                 PatientCpr = "011200-4041"
             };
 
-            var service = new AppointmentService(_appointmentRepoMock.Object, _doctorRepoMock.Object, _patientRepoMock.Object, _appointmentValidatorMock.Object);
+          
 
             _allDoctors.Add("Karl@gmail.com", new Doctor() { DoctorEmailAddress = "Karl@gmail.com" });
             _allDoctors.Add("Charlie@gmail.uk", new Doctor() { DoctorEmailAddress = "Charlie@gmail.uk" });
@@ -494,7 +435,7 @@ namespace Infrastructure.UnitTests.ServiceTests
             _allPatients.Add("011200-4041", new Patient() { PatientCPR = "011200-4041" });
             _allPatients.Add("110695-0004", new Patient() { PatientCPR = "110695-0004" });
             // act
-            Action action = () => service.Edit(aNew);
+            Action action = () => _appointmentService.Edit(aNew);
 
             // assert
             action.Should().Throw<KeyNotFoundException>().WithMessage("appointment does not exists");
@@ -508,30 +449,16 @@ namespace Infrastructure.UnitTests.ServiceTests
         }
 
         [Theory]
-        [InlineData(1, 15, null, "Karl@gmail.com", "011200-4041")]
-        [InlineData(1, 15, null, null, "011200-4041")]
-        [InlineData(1, 15, null, "Karl@gmail.com", null)]
-        [InlineData(1, 15, "Knee checkup", "Charlie@gmail.uk", "110695-0004")]
-        public void Edit_WithNonExitingRelation_ShouldThrowException(int id, int durationInMin, string description, string doctorEmailAddress, string patientCpr)
+        [MemberData(nameof(GetData), parameters: TestData.AddWithValidAppointments)]
+        public void Edit_WithNonExitingRelation_ShouldThrowException(Appointment aNew)
         {
             //arrange
-            DateTime date = DateTime.Now.AddDays(3);
-            Appointment aNew = new Appointment()
-            {
-                AppointmentId = id,
-                AppointmentDateTime = date,
-                DurationInMin = durationInMin,
-                Description = description,
-                DoctorEmailAddress = doctorEmailAddress,
-                PatientCpr = patientCpr
-            };
 
-            var service = new AppointmentService(_appointmentRepoMock.Object, _doctorRepoMock.Object, _patientRepoMock.Object, _appointmentValidatorMock.Object);
-            var aOld = new Appointment() { AppointmentId = id };
+            var aOld = new Appointment() { AppointmentId = aNew.AppointmentId };
             _allAppointments.Add(aOld.AppointmentId, aOld);
 
             // act
-            Action action = () => service.Edit(aNew);
+            Action action = () => _appointmentService.Edit(aNew);
 
             // assert
             action.Should().Throw<KeyNotFoundException>().WithMessage("This related entity does not exist");
@@ -556,10 +483,9 @@ namespace Infrastructure.UnitTests.ServiceTests
 
             _allAppointments.Add(aNew.AppointmentId, aNew);
 
-            var service = new AppointmentService(_appointmentRepoMock.Object, _doctorRepoMock.Object, _patientRepoMock.Object, _appointmentValidatorMock.Object);
 
             // act
-            Action action = () => service.Remove(aNew.AppointmentId);
+            Action action = () => _appointmentService.Remove(aNew.AppointmentId);
             action.Should().NotThrow<Exception>();
 
 
@@ -580,12 +506,9 @@ namespace Infrastructure.UnitTests.ServiceTests
             //arrange
             Appointment aNew = new Appointment() { AppointmentId = 1 };
 
-            
-
-            var service = new AppointmentService(_appointmentRepoMock.Object, _doctorRepoMock.Object, _patientRepoMock.Object, _appointmentValidatorMock.Object);
 
             // act
-            Action action = () => service.Remove(aNew.AppointmentId);
+            Action action = () => _appointmentService.Remove(aNew.AppointmentId);
             action.Should().Throw<KeyNotFoundException>().WithMessage("Appointment does not exist");
 
 
@@ -608,8 +531,94 @@ namespace Infrastructure.UnitTests.ServiceTests
             {
                 TestData.GetAllValidAppointmentsEmptyFilter => new List<object[]>
                             {
-                                new object[] { new List<Appointment> { new Appointment() { AppointmentId = 1 } }, new Filter() {} },
+                                new object[] { new List<Appointment> { new Appointment() { AppointmentId = 1 }  }, new Filter() {} },
+                                new object[] { new List<Appointment> { new Appointment() { AppointmentId = 1 } , new Appointment() { AppointmentId = 2 } }, new Filter() {} },
+                                new object[] { new List<Appointment> { new Appointment() { AppointmentId = 1 } , new Appointment() { AppointmentId = 2 }, new Appointment() { AppointmentId = 3 } }, new Filter() {} }
                             },
+                TestData.GetAllIndexOutOfBounds => new List<object[]>
+                            {
+                                new object[] { new List<Appointment> { new Appointment() { AppointmentId = 1 } , new Appointment() { AppointmentId = 2 }, new Appointment() { AppointmentId = 3 } }, new Filter() { CurrentPage = 2, ItemsPrPage = 3 } },
+                                new object[] { new List<Appointment> { new Appointment() { AppointmentId = 1 } , new Appointment() { AppointmentId = 2 }, new Appointment() { AppointmentId = 3 } , new Appointment() { AppointmentId = 4 }, new Appointment() { AppointmentId = 5 }, new Appointment() { AppointmentId = 6 } }, new Filter() { CurrentPage = 2, ItemsPrPage = 6 } },
+                                new object[] { new List<Appointment> { new Appointment() { AppointmentId = 1 } , new Appointment() { AppointmentId = 2 }, new Appointment() { AppointmentId = 3 } , new Appointment() { AppointmentId = 4 }, new Appointment() { AppointmentId = 5 }, new Appointment() { AppointmentId = 6 } }, new Filter() { CurrentPage = 3, ItemsPrPage = 3 } },
+                            },
+
+                TestData.GetByIdValidIds => new List<object[]>
+                            {
+                                new object[] {  new Appointment() { AppointmentId = 1 } },
+                                new object[] {  new Appointment() { AppointmentId = 2 } },
+                                new object[] {  new Appointment() { AppointmentId = 3 } },
+
+                            },
+
+                TestData.AddWithValidAppointments => new List<object[]>
+                            {
+                                new object[] {  new Appointment() {
+                                AppointmentDateTime = DateTime.Now.AddDays(3),
+                                DurationInMin = 15,
+                                Description = null,
+                                DoctorEmailAddress = "Karl@gmail.com",
+                                PatientCpr = "011200-4041" } },
+                                
+                                new object[] {  new Appointment() {
+                                AppointmentDateTime = DateTime.Now.AddDays(3),
+                                DurationInMin = 15,
+                                Description = null,
+                                DoctorEmailAddress = "Karl@gmail.com",
+                                PatientCpr = null } },
+                                
+                                new object[] {  new Appointment() {
+                                AppointmentDateTime = DateTime.Now.AddDays(3),
+                                DurationInMin = 15,
+                                Description = "Knee checkup",
+                                DoctorEmailAddress = "Charlie@gmail.uk",
+                                PatientCpr = "110695-0004" } },
+
+                            },
+                TestData.EditWithValidAppointments => new List<object[]>
+                            {
+                                new object[] {  new Appointment() {
+                                AppointmentId = 1,
+                                AppointmentDateTime = DateTime.Now.AddDays(3),
+                                DurationInMin = 15,
+                                Description = null,
+                                DoctorEmailAddress = null,
+                                PatientCpr = null } },
+
+                                new object[] {  new Appointment() {
+                                AppointmentId = 1,
+                                AppointmentDateTime = DateTime.Now.AddDays(3),
+                                DurationInMin = 15,
+                                Description = null,
+                                DoctorEmailAddress = "Karl@gmail.com",
+                                PatientCpr = "011200-4041" } },
+
+                                new object[] {  new Appointment() {
+                                AppointmentId = 1,
+                                AppointmentDateTime = DateTime.Now.AddDays(3),
+                                DurationInMin = 15,
+                                Description = null,
+                                DoctorEmailAddress = null,
+                                PatientCpr = "011200-4041" } },
+                                
+                                new object[] {  new Appointment() {
+                                AppointmentId = 1,
+                                AppointmentDateTime = DateTime.Now.AddDays(3),
+                                DurationInMin = 15,
+                                Description = null,
+                                DoctorEmailAddress = "Karl@gmail.com",
+                                PatientCpr = null } },
+
+                                new object[] {  new Appointment() {
+                                AppointmentId = 1,
+                                AppointmentDateTime = DateTime.Now.AddDays(3),
+                                DurationInMin = 15,
+                                Description = "Knee checkup",
+                                DoctorEmailAddress = "Charlie@gmail.uk",
+                                PatientCpr = "110695-0004" } },
+
+                            },
+
+
 
                 _ => null,
             };
@@ -618,6 +627,20 @@ namespace Infrastructure.UnitTests.ServiceTests
         public enum TestData
         {
             GetAllValidAppointmentsEmptyFilter,
+            GetAllIndexOutOfBounds,
+            GetByIdValidIds,
+            AddWithValidAppointments,
+            EditWithValidAppointments
         }
+
+        /*
+        [InlineData(1, 15, null, null, null)]
+        [InlineData(1, 15, null, "Karl@gmail.com", "011200-4041")]
+        [InlineData(1, 15, null, null, "011200-4041")]
+        [InlineData(1, 15, null, "Karl@gmail.com", null)]
+        [InlineData(1, 15, "Knee checkup", "Charlie@gmail.uk", "110695-0004")]
+                             
+         */
+
     }
 }
