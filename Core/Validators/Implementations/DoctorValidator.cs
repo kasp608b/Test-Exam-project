@@ -21,7 +21,7 @@ namespace Core.Services.Validators.Implementations
 
         }
 
-        private void PhoneValidation(Doctor doctor)
+        public void PhoneValidation(Doctor doctor)
         {
             if (doctor.PhoneNumber == null)
             {
@@ -35,7 +35,7 @@ namespace Core.Services.Validators.Implementations
             }
         }
 
-        private void EmailValidation(Doctor doctor)
+        public void EmailValidation(Doctor doctor)
         {
             if (doctor.DoctorEmailAddress == null)
             {
@@ -48,7 +48,7 @@ namespace Core.Services.Validators.Implementations
             }
         }
 
-        private void LastNameValidation(Doctor doctor)
+        public void LastNameValidation(Doctor doctor)
         {
             
             if (string.IsNullOrEmpty(doctor.LastName) || doctor.LastName.Length < 2)
@@ -57,7 +57,7 @@ namespace Core.Services.Validators.Implementations
             }
         }
 
-        private void FirstNameValidation(Doctor doctor)
+        public void FirstNameValidation(Doctor doctor)
         {
             if (string.IsNullOrEmpty(doctor.FirstName) || doctor.FirstName.Length < 2)
             {
