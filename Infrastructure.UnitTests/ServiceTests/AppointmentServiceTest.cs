@@ -172,7 +172,7 @@ namespace Infrastructure.UnitTests.ServiceTests
                 .Returns(() => _allPatients.Count);
             #endregion
 
-            // Get instances of the mocked repositories
+            // Get instances of the mocked repositories and validators
             IRepository<Appointment, int> appointmentRepo = _appointmentRepoMock.Object;
             IAppointmentValidator validator = _appointmentValidatorMock.Object;
 
