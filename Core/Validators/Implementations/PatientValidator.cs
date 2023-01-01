@@ -23,7 +23,7 @@ namespace Core.Services.Validators.Implementations
             ValidateCPR(patient);
         }
 
-        private void ValidateFirstName(Patient patient)
+        public void ValidateFirstName(Patient patient)
         {
             if (String.IsNullOrEmpty(patient.PatientFirstName))
             {
@@ -32,7 +32,7 @@ namespace Core.Services.Validators.Implementations
             
         }
 
-        private void ValidateLastName(Patient patient)
+        public void ValidateLastName(Patient patient)
         {
             if (String.IsNullOrEmpty(patient.PatientLastName))
             {
@@ -41,7 +41,7 @@ namespace Core.Services.Validators.Implementations
             
         }
 
-        private void ValidatePhone(Patient patient)
+        public void ValidatePhone(Patient patient)
         {
             if (String.IsNullOrEmpty(patient.PatientPhone))
             {
@@ -56,7 +56,7 @@ namespace Core.Services.Validators.Implementations
             
         }
 
-        private void ValidateEmail(Patient patient)
+        public void ValidateEmail(Patient patient)
         {
             if (String.IsNullOrEmpty(patient.PatientEmail))
             {
@@ -71,7 +71,7 @@ namespace Core.Services.Validators.Implementations
             
         }
 
-        void ValidateCPR(Patient patient)
+       public void ValidateCPR(Patient patient)
         {
             if (String.IsNullOrEmpty(patient.PatientCPR))
             {
