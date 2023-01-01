@@ -13,12 +13,14 @@ using Xunit;
 using FluentAssertions;
 using Moq;
 using Xunit.Sdk;
+using System.ComponentModel.DataAnnotations;
 
 namespace Infrastructure.UnitTests.ServiceTests
 {
 
     public class PatientServiceTest
     {
+        private IService<Patient, string> _patientService;
         private SortedDictionary<string, Patient> _allPatients;
         private Mock<IRepository<Patient, string>> _patientRepoMock;
         private Mock<IPatientValidator> _validatorMock;
@@ -71,12 +73,21 @@ namespace Infrastructure.UnitTests.ServiceTests
                 .Setup(repo => repo
                     .Count())
                 .Returns(() => _allPatients.Count);
+
+            // Get instances of the mocked repositories
+            IRepository<Patient, string> patientRepo = _patientRepoMock.Object;
+            IPatientValidator validator = _validatorMock.Object;
+
+            // Create a PatientService 
+            _patientService = new PatientService(_patientRepoMock.Object, _validatorMock.Object);
         }
+
+
 
         [Fact]
         public void PatientService_ShouldBeOfTypeIService()
         {
-            new PatientService(_patientRepoMock.Object, _validatorMock.Object).Should()
+            _patientService.Should()
                 .BeAssignableTo<IService<Patient, string>>();
 
 
@@ -85,29 +96,28 @@ namespace Infrastructure.UnitTests.ServiceTests
 
         #region Getall
 
-        
 
-        
-        [Fact]
-        public void GetallTest()
+
+
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.GetAllValidPatientsEmptyFilter)]
+        public void Getall_EmptyFilterValidPatients_ShouldGetAllPatients(List<Patient> patients, Filter filter)
         {
             //arrange
-            Patient p1 = new Patient() {PatientCPR = "011200-4106"};
-            Patient p2 = new Patient() {PatientCPR = "011200-4107"};
 
-            var patients = new List<Patient>() {p1, p2};
-            Filter filter = new Filter();
-
-            _allPatients.Add(p1.PatientCPR, p1);
-            _allPatients.Add(p2.PatientCPR, p2);
+            foreach (var patient in patients)
+            {
+                _patientService.Add(patient);
+            }
+            
             // the doctors in the repository
             var expected = new FilteredList<Patient>()
                 { List = _allPatients.Values.ToList(), TotalCount = _allPatients.Count, FilterUsed = filter };
 
             expected.TotalCount = _allPatients.Count;
-            IService<Patient, string> service = new PatientService(_patientRepoMock.Object, _validatorMock.Object);
+           
 
-            var result = service.GetAll(filter);
+            var result = _patientService.GetAll(filter);
 
             // assert
             Assert.Equal(expected.List, result.List);
@@ -115,7 +125,7 @@ namespace Infrastructure.UnitTests.ServiceTests
         }
 
         [Fact]
-        public void GetallTestNegativPagging_ShouldThrowException()
+        public void GetAll_NegativPagging_ShouldThrowException()
         {
             //arrange
             Patient p1 = new Patient() { PatientCPR = "011200-4106" };
@@ -131,9 +141,8 @@ namespace Infrastructure.UnitTests.ServiceTests
                 { List = _allPatients.Values.ToList(), TotalCount = _allPatients.Count, FilterUsed = filter };
 
             expected.TotalCount = _allPatients.Count;
-            IService<Patient, string> service = new PatientService(_patientRepoMock.Object, _validatorMock.Object);
-
-            Action action = () => service.GetAll(filter);
+           
+            Action action = () => _patientService.GetAll(filter);
 
             // assert
             action.Should().Throw<InvalidDataException>()
@@ -145,39 +154,22 @@ namespace Infrastructure.UnitTests.ServiceTests
 
         #region GetPatientById
 
-        [Fact]
-        public void GetPatientById_PatientExists()
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.GetByIdValidIds)]
+        public void GetById_WithValidId_ShouldNotThrowException(Patient c1)
         {
             // arrange
             
             // company c1 exists in the Company repository
-            var c1 = new Patient() {PatientCPR = "011200-4106"};
             _allPatients.Add(c1.PatientCPR, c1);
 
-            var service = new PatientService(_patientRepoMock.Object,_validatorMock.Object);
 
             // act
-            var result = service.GetById(c1.PatientCPR);
+            var result = _patientService.GetById(c1.PatientCPR);
 
             // assert
             Assert.Equal(c1, result);
             _patientRepoMock.Verify(repo => repo.GetById(It.Is<string>(id => id == c1.PatientCPR)), Times.Once);
-        }
-
-        [Fact]
-        public void GetPatientByIdShouldCallPatientValidatorCPRValidatorWithCPRParam_Once()
-        {
-            // arrange
-
-            // company c1 exists in the Company repository
-            var c1 = new Patient() { PatientCPR = "011200-4106" };
-            _allPatients.Add(c1.PatientCPR, c1);
-
-            var service = new PatientService(_patientRepoMock.Object, _validatorMock.Object);
-
-            // act
-            var result = service.GetById(c1.PatientCPR);
-
             _validatorMock.Verify(validator => validator.ValidateCPR(c1.PatientCPR), Times.Once);
         }
 
@@ -185,56 +177,34 @@ namespace Infrastructure.UnitTests.ServiceTests
 
 
         #region Add
-
+    
         [Theory]
-       [InlineData("011200-4106" ,"mike" , "mikeowsky", "mike@hotmail.com" , "40506090" )]
-       public void AddPatient_ValidPatient(string PatientCPR ,string FirstName , string Lastname , string Email , string phone)
+        [MemberData(nameof(GetData), parameters: TestData.AddWithValidPatients)]
+        public void Add_WithValidPatient_ShouldNotThrowException(Patient patient)
        {
            // arrange
-           var Patient = new Patient()
-           {
-               PatientCPR = PatientCPR, 
-               PatientEmail = Email, 
-               PatientLastName = Lastname, 
-               PatientPhone = phone, 
-               PatientFirstName = FirstName
+        
 
+            // act
 
-
-           };
-
-           // act
-           PatientService service = new PatientService(_patientRepoMock.Object, _validatorMock.Object);
-
-           service.Add(Patient);
+            _patientService.Add(patient);
 
            // assert
-           Assert.Contains(Patient, _allPatients.Values);
-           _patientRepoMock.Verify(repo => repo.Add(It.Is<Patient>(c => c == Patient)), Times.Once);
-       }
-
-       [Fact]
-       public void Add_ShouldCallPatientValidatorDefaultValidationWithPatientParam_Once()
-       {
-           IService<Patient, string> service = new PatientService(_patientRepoMock.Object,_validatorMock.Object);
-            var patient = new Patient(){PatientFirstName = "name" , PatientLastName = "lastname", PatientPhone = "40204050" , PatientEmail = "hans@hotmail.com" , PatientCPR = "150429-0677"};
-            service.Add(patient);
-            _validatorMock.Verify(validator => validator.DefaultValidator(patient), Times.Once);
-
-       }
-
+           Assert.Contains(patient, _allPatients.Values);
+           _patientRepoMock.Verify(repo => repo.Add(It.Is<Patient>(c => c == patient)), Times.Once);
+           _validatorMock.Verify(validator => validator.DefaultValidator(patient), Times.Once);
+        }
 
        [Fact]
        public void Add_PatientAlreadyInTheDatabase_ShouldThrowException()
        {
            //arrange
-           IService<Patient, string> service = new PatientService(_patientRepoMock.Object,_validatorMock.Object);
            var patient = new Patient(){PatientFirstName = "name" , PatientLastName = "lastname", PatientPhone = "40204050" , PatientEmail = "hans@hotmail.com" , PatientCPR = "150429-0677"};
            
             _allPatients.Add(patient.PatientCPR,patient);
 
             //act + assert
-            Action action = () => service.Add(patient);
+            Action action = () => _patientService.Add(patient);
             action.Should().Throw<InvalidDataException>().WithMessage("Patient is already in the database");
 
 
@@ -242,62 +212,29 @@ namespace Infrastructure.UnitTests.ServiceTests
        }
 
 
-       #endregion
+        #endregion
 
 
-       #region Edit
+        #region Edit
 
-       [Fact]
-       public void Edit_ShouldCallPatientValidatorDefaultValidationWithPatientParam_Once()
-       {
-           IService<Patient, string> service = new PatientService(_patientRepoMock.Object,_validatorMock.Object);
-           var patient = new Patient(){PatientFirstName = "name" , PatientLastName = "lastname", PatientPhone = "40204050" , PatientEmail = "hans@hotmail.com" , PatientCPR = "150429-0677"};
-           _allPatients.Add(patient.PatientCPR,patient);
-           service.Edit(patient);
-           _validatorMock.Verify(validator => validator.DefaultValidator(patient), Times.Once);
-
-       }
-
-       [Theory]
-       [InlineData("011200-4106" ,"mike" , "mikeowsky", "mike@hotmail.com" , "40506090" )]
-       public void EditPatient_ValidPatientWithPatientInDatabse(string PatientCPR ,string FirstName , string Lastname , string Email , string phone)
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.EditWithValidPatients)]
+       public void Edit_ValidPatientWithPatientInDatabse_ShouldNotThrowException(Patient patientnew, Patient PatientOld)
        {
            // arrange
-           var PatientOld = new Patient()
-           {
-               PatientCPR = PatientCPR, 
-               PatientEmail = "jake@hotmail.com", 
-               PatientLastName = "jakeowsky", 
-               PatientPhone = "20201090", 
-               PatientFirstName = "jake"
-
-
-
-           };
-           var Patientnew = new Patient()
-           {
-               PatientCPR = PatientCPR, 
-               PatientEmail = Email, 
-               PatientLastName = Lastname, 
-               PatientPhone = phone, 
-               PatientFirstName = FirstName
-
-
-
-           };
-
             _allPatients.Add(PatientOld.PatientCPR,PatientOld);
 
            // act
-           PatientService service = new PatientService(_patientRepoMock.Object, _validatorMock.Object);
-           service.Edit(Patientnew);
-
+            _patientService.Edit(patientnew);
+            
            // assert
-           var updatedPatient = _allPatients[PatientCPR];
+           var updatedPatient = _allPatients[patientnew.PatientCPR];
 
-           updatedPatient.Should().Be(Patientnew);
+           updatedPatient.Should().Be(patientnew);
 
-       }
+            _validatorMock.Verify(validator => validator.DefaultValidator(patientnew), Times.Once);
+
+        }
 
 
        [Fact]
@@ -316,11 +253,10 @@ namespace Infrastructure.UnitTests.ServiceTests
 
            };
 
-           // act + assert
-           PatientService service = new PatientService(_patientRepoMock.Object, _validatorMock.Object);
+           // act
+           Action action = () => _patientService.Edit(Patient);
 
-           Action action = () => service.Edit(Patient);
-
+           //assert
            action.Should().Throw<ArgumentException>().WithMessage("Patient is not in the database");
 
        }
@@ -331,7 +267,7 @@ namespace Infrastructure.UnitTests.ServiceTests
 
         #region RemovePatientById
         [Fact]
-        public void RemovePatientById()
+        public void Remove_ValidPatient_ShouldNotThrowException()
         {
             // arrange
 
@@ -339,11 +275,10 @@ namespace Infrastructure.UnitTests.ServiceTests
             var c1 = new Patient() { PatientCPR = "011200-4106" };
             _allPatients.Add(c1.PatientCPR, c1);
 
-            var service = new PatientService(_patientRepoMock.Object, _validatorMock.Object);
-
             // act
-            var result = service.Remove(c1.PatientCPR);
+            var result = _patientService.Remove(c1.PatientCPR);
 
+            //assert
             _validatorMock.Verify(validator => validator.ValidateCPR(c1.PatientCPR), Times.Once);
         }
 
@@ -357,10 +292,8 @@ namespace Infrastructure.UnitTests.ServiceTests
             var c1 = new Patient() { PatientCPR = "011200-4106" };
             _allPatients.Add(c1.PatientCPR, c1);
 
-            var service = new PatientService(_patientRepoMock.Object, _validatorMock.Object);
-
             // act
-            var result = service.Remove(c1.PatientCPR);
+            var result = _patientService.Remove(c1.PatientCPR);
 
             Assert.Null(_patientRepoMock.Object.GetById(c1.PatientCPR));
             _patientRepoMock.Verify(repo => repo.Remove(It.Is<string>(c => c == c1.PatientCPR )),Times.Once());
@@ -375,14 +308,105 @@ namespace Infrastructure.UnitTests.ServiceTests
             // company c1 exists in the Company repository
             var c1 = new Patient() { PatientCPR = "011200-4106" };
 
-            var service = new PatientService(_patientRepoMock.Object, _validatorMock.Object);
-
             // act
-            Action action = () => service.Remove(c1.PatientCPR);
+            Action action = () => _patientService.Remove(c1.PatientCPR);
 
             action.Should().Throw<ArgumentException>().WithMessage("Nonexistant patient cannot be removed!");
         }
 
         #endregion
+
+        public static IEnumerable<object[]> GetData(TestData testData)
+        {
+
+            return testData switch
+            {
+                TestData.GetAllValidPatientsEmptyFilter => new List<object[]>
+                            {
+                                new object[] { new List<Patient> { new Patient() { PatientCPR = "011200-4106" } }, new Filter() {} },
+                                new object[] { new List<Patient> { new Patient() { PatientCPR = "011200-4106" }, new Patient() { PatientCPR = "011200-4107" } }, new Filter() {} },
+                                new object[] { new List<Patient> { new Patient() { PatientCPR = "011200-4106" }, new Patient() { PatientCPR = "011200-4107" }, new Patient() { PatientCPR = "011200-4108" } }, new Filter() {} }
+                            },
+                TestData.GetByIdValidIds => new List<object[]>
+                            {
+                                new object[] {  new Patient() { PatientCPR = "011200-4106" }, },
+                                new object[] {  new Patient() { PatientCPR = "011200-4107" }  },
+                                new object[] {  new Patient() { PatientCPR = "011200-4108" }  }
+                            },
+
+                TestData.AddWithValidPatients => new List<object[]>
+                            {
+                                new object[] {  new Patient() { PatientCPR = "011200-4106" , PatientEmail = "mike@hotmail.com", PatientFirstName = "mike" , PatientLastName = "mikeowsky" , PatientPhone = "40506090" } },
+                                new object[] {  new Patient() { PatientCPR = "011200-4106" ,  }  },
+                                new object[] {  new Patient() { PatientCPR = "011200-4106" , PatientFirstName = "mike" , PatientLastName = "mikeowsky" , PatientPhone = "40506090" }  }
+                            },
+                TestData.EditWithValidPatients => new List<object[]>
+                            {
+                                new object[] {
+                                    new Patient() {
+                                    PatientCPR = "011200-4106" ,
+                                    PatientEmail = "mike@hotmail.com",
+                                    PatientFirstName = "mike" ,
+                                    PatientLastName = "mikeowsky" ,
+                                    PatientPhone = "40506090" },
+
+                                    new Patient() {
+                                    PatientCPR = "011200-4106",
+                                    PatientEmail = "jake@hotmail.com",
+                                    PatientLastName = "jakeowsky",
+                                    PatientPhone = "20201090",
+                                    PatientFirstName = "jake" }, },
+                                new object[] {
+                                    new Patient() {
+                                        PatientCPR = "011200-4106" ,  } ,
+
+                                    new Patient() {
+                                    PatientCPR = "011200-4106",
+                                    PatientEmail = "jake@hotmail.com",
+                                    PatientLastName = "jakeowsky",
+                                    PatientPhone = "20201090",
+                                    PatientFirstName = "jake" }, },
+                                new object[] {
+                                    new Patient() {
+                                        PatientCPR = "011200-4106" ,
+                                        PatientFirstName = "mike" ,
+                                        PatientLastName = "mikeowsky" ,
+                                        PatientPhone = "40506090" } ,
+
+                                    new Patient() {
+                                    PatientCPR = "011200-4106",
+                                    PatientEmail = "jake@hotmail.com",
+                                    PatientLastName = "jakeowsky",
+                                    PatientPhone = "20201090",
+                                    PatientFirstName = "jake" }, }
+                            },
+               
+
+                _ => null,
+            };
+        }
+
+        public enum TestData
+        {
+            GetAllValidPatientsEmptyFilter,
+            GetByIdValidIds,
+            AddWithValidPatients,
+            EditWithValidPatients
+
+        }
+        /* PatientCPR = PatientCPR, 
+               PatientEmail = Email, 
+               PatientLastName = Lastname, 
+               PatientPhone = phone, 
+               PatientFirstName = FirstName
+         * [InlineData("011200-4106" ,"mike" , "mikeowsky", "mike@hotmail.com" , "40506090" )]
+         PatientCPR = PatientCPR, 
+               PatientEmail = "jake@hotmail.com", 
+               PatientLastName = "jakeowsky", 
+               PatientPhone = "20201090", 
+               PatientFirstName = "jake"
+
+         */
+
     }
 }

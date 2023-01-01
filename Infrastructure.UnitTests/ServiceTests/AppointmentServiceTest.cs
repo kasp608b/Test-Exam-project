@@ -476,7 +476,7 @@ namespace Infrastructure.UnitTests.ServiceTests
         #region Remove
 
         [Fact]
-        public void Remove_ShouldNotThrowException()
+        public void Remove_ValidAppointment_ShouldNotThrowException()
         {
             //arrange
             Appointment aNew = new Appointment() { AppointmentId = 1};
@@ -633,14 +633,6 @@ namespace Infrastructure.UnitTests.ServiceTests
             EditWithValidAppointments
         }
 
-        /*
-        [InlineData(1, 15, null, null, null)]
-        [InlineData(1, 15, null, "Karl@gmail.com", "011200-4041")]
-        [InlineData(1, 15, null, null, "011200-4041")]
-        [InlineData(1, 15, null, "Karl@gmail.com", null)]
-        [InlineData(1, 15, "Knee checkup", "Charlie@gmail.uk", "110695-0004")]
-                             
-         */
 
     }
 }
