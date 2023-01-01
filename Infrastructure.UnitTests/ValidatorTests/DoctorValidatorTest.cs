@@ -9,17 +9,23 @@ namespace Infrastructure.UnitTests.ValidatorTests
 {
     public class DoctorValidatorTest
     {
+        private DoctorValidator _doctorValidator;
+
+        public DoctorValidatorTest()
+        {
+            _doctorValidator = new DoctorValidator();
+        }
+
         [Fact]
         public void DoctorValidator_ShouldBeOfTypeIDoctorValidator()
         {
-            new DoctorValidator().Should().BeAssignableTo<IDoctorValidator>();
+            _doctorValidator.Should().BeAssignableTo<IDoctorValidator>();
         }
 
         [Fact]
         public void DefaultValidator_WithDoctorThatsNull_ShouldThrowException()
         {
-            IDoctorValidator doctorValidator = new DoctorValidator();
-            Action action = () => doctorValidator.DefaultValidator(null as Doctor);
+            Action action = () => _doctorValidator.DefaultValidator(null as Doctor);
             action.Should().Throw<NullReferenceException>().WithMessage("Doctor cannot be null");
         }
 
@@ -29,8 +35,7 @@ namespace Infrastructure.UnitTests.ValidatorTests
         [InlineData(null)]
         public void DefaultValidator_WithDoctorInvalidFirstName_ShouldThrowException(string firstName)
         {
-            IDoctorValidator doctorValidator = new DoctorValidator();
-            Action action = () => doctorValidator.DefaultValidator(new Doctor()
+            Action action = () => _doctorValidator.DefaultValidator(new Doctor()
             {
                 FirstName = firstName,
                 LastName = "Lumby",
@@ -46,8 +51,7 @@ namespace Infrastructure.UnitTests.ValidatorTests
         [InlineData(null)]
         public void DefaultValidator_WithDoctorInvalidLastName_ShouldThrowException(string lastName)
         {
-            IDoctorValidator doctorValidator = new DoctorValidator();
-            Action action = () => doctorValidator.DefaultValidator(new Doctor()
+            Action action = () => _doctorValidator.DefaultValidator(new Doctor()
             {
                 FirstName = "Mads",
                 LastName = lastName,
@@ -60,8 +64,7 @@ namespace Infrastructure.UnitTests.ValidatorTests
         [Fact]
         public void DefaultValidator_WithDoctorHasNoEmail_ShouldThrowException()
         {
-            IDoctorValidator doctorValidator = new DoctorValidator();
-            Action action = () => doctorValidator.DefaultValidator(new Doctor()
+            Action action = () => _doctorValidator.DefaultValidator(new Doctor()
             {
                 FirstName = "Mads",
                 LastName = "Lumby",
@@ -77,8 +80,7 @@ namespace Infrastructure.UnitTests.ValidatorTests
         [InlineData("")]
         public void DefaultValidator_WithDoctorHasNoValidEmail_ShouldThrowException(string email)
         {
-            IDoctorValidator doctorValidator = new DoctorValidator();
-            Action action = () => doctorValidator.DefaultValidator(new Doctor()
+            Action action = () => _doctorValidator.DefaultValidator(new Doctor()
             {
                 FirstName = "Mads",
                 LastName = "Lumby",
@@ -91,8 +93,7 @@ namespace Infrastructure.UnitTests.ValidatorTests
         [Fact]
         public void DefaultValidator_WithDoctorHasValidEmail_ShouldNotThrowException()
         {
-            IDoctorValidator doctorValidator = new DoctorValidator();
-            Action action = () => doctorValidator.DefaultValidator(new Doctor()
+            Action action = () => _doctorValidator.DefaultValidator(new Doctor()
             {
                 FirstName = "Mads",
                 LastName = "Lumby",
@@ -105,8 +106,7 @@ namespace Infrastructure.UnitTests.ValidatorTests
         [Fact]
         public void DefaultValidator_WithDoctorHasNoPhoneNumber_ShouldThrowException()
         {
-            IDoctorValidator doctorValidator = new DoctorValidator();
-            Action action = () => doctorValidator.DefaultValidator(new Doctor()
+            Action action = () => _doctorValidator.DefaultValidator(new Doctor()
             {
                 FirstName = "Mads",
                 LastName = "Lumby",
@@ -122,8 +122,7 @@ namespace Infrastructure.UnitTests.ValidatorTests
         [InlineData("23-11-51-77")]
         public void DefaultValidator_WithDoctorHasNoValidPhoneNumber_ShouldThrowException(string phoneNumber)
         {
-            IDoctorValidator doctorValidator = new DoctorValidator();
-            Action action = () => doctorValidator.DefaultValidator(new Doctor()
+            Action action = () => _doctorValidator.DefaultValidator(new Doctor()
             {
                 FirstName = "Mads",
                 LastName = "Lumby",
@@ -138,8 +137,7 @@ namespace Infrastructure.UnitTests.ValidatorTests
         [InlineData("23 11 51 77")]
         public void DefaultValidator_WithDoctorHasValidPhoneNumber_ShouldNotThrowException(string phoneNumber)
         {
-            IDoctorValidator doctorValidator = new DoctorValidator();
-            Action action = () => doctorValidator.DefaultValidator(new Doctor()
+            Action action = () => _doctorValidator.DefaultValidator(new Doctor()
             {
                 FirstName = "Mads",
                 LastName = "Lumby",
