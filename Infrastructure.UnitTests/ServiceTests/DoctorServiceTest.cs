@@ -75,45 +75,31 @@ namespace Infrastructure.UnitTests.ServiceTests
         }
 
         [Fact]
-        public void CreateDoctorService_ValidCompanyRepository()
+        public void DoctorService_ValidCompanyRepository_shouldNotBeNull()
         {
-            // arrange
-           
-
-            // act
-            
-
             // assert
             Assert.NotNull(_doctorService);
         }
 
         [Fact]
-        public void DoctorService_IsOfTypeIService()
+        public void DoctorService_NormalInitialization_IsOfTypeIService()
         {
-            // arrange
-
-
-            // act
-
-
             // assert
-            _doctorService.Should().BeAssignableTo<IService<Doctor, string>>();
+            _doctorService.Should()
+                .BeAssignableTo<IService<Doctor, string>>();
         }
 
         #region GetAll
 
-        [Fact]
-        public void GetAllDoctors()
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.GetAllValidDoctorsEmptyFilter)]
+        public void GetAll_EmptyFilter_ShouldNotThrowException(List<Doctor> doctors, Filter filter)
         {
             //arrange
-            Doctor d1 = new Doctor(){DoctorEmailAddress = "lumby98@gmail.com"};
-            Doctor d2 = new Doctor(){DoctorEmailAddress = "michael@hotmail.com"};
-            var doctors = new List<Doctor>() { d1, d2};
-            Filter filter = new Filter();
-
-            _allDoctors.Add(d1.DoctorEmailAddress, d1);
-            _allDoctors.Add(d2.DoctorEmailAddress, d2);
-
+            foreach (var doctor in doctors)
+            {
+                _allDoctors.Add(doctor.DoctorEmailAddress, doctor);
+            }
 
             // the doctors in the repository
             var expected = new FilteredList<Doctor>()
@@ -131,7 +117,7 @@ namespace Infrastructure.UnitTests.ServiceTests
         }
 
         [Fact]
-        public void GetAllDoctorsNegativPagginh_ShoudlThrowException()
+        public void GetAll_CurrentPageNegative_ShoudlThrowException()
         {
             //arrange
             Doctor d1 = new Doctor() { DoctorEmailAddress = "lumby98@gmail.com" };
@@ -158,52 +144,100 @@ namespace Infrastructure.UnitTests.ServiceTests
 
         }
 
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.GetAllIndexOutOfBounds)]
+        public void GetAll_IndexOutOfBounds_ShouldThrowException(List<Doctor> doctors, Filter filter)
+        {
+            //arrange
+            foreach (var doctor in doctors)
+            {
+                _allDoctors.Add(doctor.DoctorEmailAddress, doctor);
+            }
+
+            // act
+            Action action = () => _doctorService.GetAll(filter);
+
+            // assert
+            action.Should().Throw<ArgumentException>().WithMessage("no more doctors");
+            _doctorRepoMock.Verify(repo => repo.GetAll(It.Is<Filter>(dFilter => dFilter == filter)), Times.Never);
+
+        }
+
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.GetAllNoDoctorsSatifyFilter)]
+        public void GetAll_NoDoctorsSatisfyFilter_ShouldThrowException(List<Doctor> doctors, Filter filter)
+        {
+            //arrange
+            _doctorRepoMock
+                .Setup(repo => repo
+                    .GetAll(It.IsAny<Filter>()))
+                .Returns<Filter>((filter) => new FilteredList<Doctor>() { List = new List<Doctor> { }, TotalCount = _allDoctors.Count, FilterUsed = filter });
+
+            foreach (var doctor in doctors)
+            {
+                _allDoctors.Add(doctor.DoctorEmailAddress, doctor);
+            }
+
+            // act
+            Action action = () => _doctorService.GetAll(filter);
+
+            // assert
+            action.Should().Throw<KeyNotFoundException>().WithMessage("Could not find doctors that satisfy the filter");
+            _doctorRepoMock.Verify(repo => repo.GetAll(It.Is<Filter>(dFilter => dFilter == filter)), Times.Once);
+
+        }
+
 
 
         #endregion
 
         #region get by id
 
-        [Fact]
-        public void GetById_WithValidId_ShouldNotThrowException()
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.GetByIdWithValidId)]
+        public void GetById_WithValidId_ShouldNotThrowException(List<Doctor> doctors, Doctor doctorToGet )
         {
             // arrange
-            var d = new Doctor() {DoctorEmailAddress = "lumby98@gmail.com"};
-            _allDoctors.Add(d.DoctorEmailAddress, d);
+            _allDoctors.Add(doctorToGet.DoctorEmailAddress, doctorToGet);
+
+            foreach (var doctor in doctors)
+            {
+                _allDoctors.Add(doctor.DoctorEmailAddress, doctor);
+            }
 
             // act
-            var result = _doctorService.GetById(d.DoctorEmailAddress);
+            var result = _doctorService.GetById(doctorToGet.DoctorEmailAddress);
 
-            Assert.Equal(d, result);
+            Assert.Equal(doctorToGet, result);
 
             _doctorRepoMock.Verify(repo => repo
-                .GetById(It.Is<string>(id => id == d.DoctorEmailAddress)), Times.Once);
+                .GetById(It.Is<string>(id => id == doctorToGet.DoctorEmailAddress)), Times.Once);
 
             _doctorValidatorMock.Verify(validator => validator
-                .ValidateEmail(It.Is<string>(id => id == d.DoctorEmailAddress)), Times.Once);
+                .ValidateEmail(It.Is<string>(id => id == doctorToGet.DoctorEmailAddress)), Times.Once);
         }
 
-        [Fact]
-        public void GetById_DoctorDoesNotExist_shouldThrowException()
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.GetByIdWithValidId)]
+        public void GetById_DoctorDoesNotExist_shouldThrowException(List<Doctor> doctors, Doctor doctorToGet)
         {
             // arrange
-            var d1 = new Doctor(){ DoctorEmailAddress = "lumby98@gmail.com"};
-            var d2 = new Doctor(){ DoctorEmailAddress = "lumby56@hotmail.com"};
-
-            // only d2 exists in the doctor repository
-            _allDoctors.Add(d2.DoctorEmailAddress, d2);
+            foreach (var doctor in doctors)
+            {
+                _allDoctors.Add(doctor.DoctorEmailAddress, doctor);
+            }
 
             // act
-            Action action = () => _doctorService.GetById(d1.DoctorEmailAddress);
+            Action action = () => _doctorService.GetById(doctorToGet.DoctorEmailAddress);
 
             // assert
             action.Should().Throw<KeyNotFoundException>().WithMessage("Doctor does not exist");
             
             _doctorRepoMock.Verify(repo => repo
-                .GetById(It.Is<string>(id => id == d1.DoctorEmailAddress)), Times.Once);
+                .GetById(It.Is<string>(id => id == doctorToGet.DoctorEmailAddress)), Times.Once);
 
             _doctorValidatorMock.Verify(validator => validator
-                .ValidateEmail(It.Is<string>(id => id == d1.DoctorEmailAddress)), Times.Once);
+                .ValidateEmail(It.Is<string>(id => id == doctorToGet.DoctorEmailAddress)), Times.Once);
         }
 
 
@@ -212,25 +246,20 @@ namespace Infrastructure.UnitTests.ServiceTests
         #region Add
 
         [Theory]
-        [InlineData("Karl", "Mason", "doctor@gmail.com", "23115177", true)]
-        [InlineData("Peter", "Holt", "Porter@hotmail.dk", "12345678", false)]
-        [InlineData("Sandra", "Bullock", "SB@Yahoo.uk", "09876543", false)]
-        public void Add_WithValidDoctor_shouldNotThrowException( string firstname, string lastname, string emailAddress, string phoneNumber, bool isAdmin)
+        [MemberData(nameof(GetData), parameters: TestData.ValidDoctors)]
+        public void Add_WithValidDoctor_shouldNotThrowException(Doctor doctorToAdd)
         {
-            // arrange
-            var d1 = new Doctor() { DoctorEmailAddress = emailAddress, FirstName = firstname, LastName = lastname, PhoneNumber = phoneNumber, IsAdmin = isAdmin};
-
             // act
-            Action action = () => _doctorService.Add(d1);
+            Action action = () => _doctorService.Add(doctorToAdd);
             // assert
             action.Should().NotThrow<Exception>();
-            Assert.Contains(d1, _allDoctors.Values);
+            Assert.Contains(doctorToAdd, _allDoctors.Values);
 
             _doctorRepoMock.Verify(repo => repo
-                .Add(It.Is<Doctor>(doctor => doctor == d1)), Times.Once);
+                .Add(It.Is<Doctor>(doctor => doctor == doctorToAdd)), Times.Once);
 
             _doctorValidatorMock.Verify(validator => validator
-                .DefaultValidator(It.Is<Doctor>(doctor => doctor == d1)), Times.Once);
+                .DefaultValidator(It.Is<Doctor>(doctor => doctor == doctorToAdd)), Times.Once);
         }
 
         #endregion
@@ -238,94 +267,152 @@ namespace Infrastructure.UnitTests.ServiceTests
         #region Edit
 
         [Theory]
-        [InlineData("Karl", "Mason", "email@gmail.com", "23115177", true)]
-        [InlineData("Peter", "Holt", "email@gmail.com", "12345678", false)]
-        [InlineData("Sandra", "Bullock", "email@gmail.com", "09876543", false)]
-        public void Edit_WithValidDoctor_shouldNotThrowException(string firstname, string lastname, string emailAddress, string phoneNumber, bool isAdmin)
+        [MemberData(nameof(GetData), parameters: TestData.EditedAndUneditedDoctors)]
+        public void Edit_WithValidDoctor_shouldNotThrowException(Doctor uneditedDoctor, Doctor editedDoctor)
         {
-            // arrange
-            var dNew = new Doctor() { DoctorEmailAddress = emailAddress, FirstName = firstname, LastName = lastname, PhoneNumber = phoneNumber, IsAdmin = isAdmin };
-            var dOld = new Doctor() { DoctorEmailAddress = "email@gmail.com", FirstName = "doctor", LastName = "doctor", PhoneNumber = "22222222", IsAdmin = false };
-
-            _allDoctors.Add(dOld.DoctorEmailAddress, dOld);
+            _allDoctors.Add(uneditedDoctor.DoctorEmailAddress, uneditedDoctor);
 
             // act
-            Action action = () => _doctorService.Edit(dNew);
+            Action action = () => _doctorService.Edit(editedDoctor);
             // assert
             action.Should().NotThrow<Exception>();
-            Assert.Equal(_doctorRepoMock.Object.GetById(dNew.DoctorEmailAddress), dNew);
+            Assert.Equal(_doctorRepoMock.Object.GetById(editedDoctor.DoctorEmailAddress), editedDoctor);
 
             _doctorRepoMock.Verify(repo => repo
-                .Edit(It.Is<Doctor>(doctor => doctor == dNew)), Times.Once);
+                .Edit(It.Is<Doctor>(doctor => doctor == editedDoctor)), Times.Once);
 
             _doctorValidatorMock.Verify(validator => validator
-                .DefaultValidator(It.Is<Doctor>(doctor => doctor == dNew)), Times.Once);
+                .DefaultValidator(It.Is<Doctor>(doctor => doctor == editedDoctor)), Times.Once);
         }
 
-        [Fact]
-        public void Edit_WithInValidDoctor_shouldThrowException()
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.EditedAndUneditedDoctorsInvalid)]
+        public void Edit_WithInValidDoctor_shouldThrowException(Doctor uneditedDoctor, Doctor editedDoctor)
         {
             // arrange
-            var dOld = new Doctor() { DoctorEmailAddress = "email@gmail.com", FirstName = "doctor", LastName = "doctor", PhoneNumber = "22222222", IsAdmin = false };
-            var dNew = new Doctor() { DoctorEmailAddress = "emai@gmail.com", FirstName = "doctor", LastName = "doctor", PhoneNumber = "22222222", IsAdmin = false };
-            _allDoctors.Add(dOld.DoctorEmailAddress, dOld);
+            _allDoctors.Add(uneditedDoctor.DoctorEmailAddress, uneditedDoctor);
 
             // act
-            Action action = () => _doctorService.Edit(dNew);
+            Action action = () => _doctorService.Edit(editedDoctor);
             // assert
             action.Should().Throw<ArgumentException>().WithMessage("A doctor with this email does not exist");
 
             _doctorRepoMock.Verify(repo => repo
-                .Edit(It.Is<Doctor>(doctor => doctor == dNew)), Times.Never);
+                .Edit(It.Is<Doctor>(doctor => doctor == editedDoctor)), Times.Never);
 
             _doctorValidatorMock.Verify(validator => validator
-                .DefaultValidator(It.Is<Doctor>(doctor => doctor == dNew)), Times.Once);
+                .DefaultValidator(It.Is<Doctor>(doctor => doctor == editedDoctor)), Times.Once);
         }
 
 
         #endregion
 
         #region Remove
-        [Fact]
-        public void Remove_WithValidDoctor_shouldNotThrowException()
+
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.ValidDoctors)]
+        public void Remove_WithValidDoctor_shouldNotThrowException(Doctor doctorToAdd)
         {
             // arrange
-            var dOld = new Doctor() { DoctorEmailAddress = "email@gmail.com", FirstName = "doctor", LastName = "doctor", PhoneNumber = "22222222", IsAdmin = false };
 
-            _allDoctors.Add(dOld.DoctorEmailAddress, dOld);
+            _allDoctors.Add(doctorToAdd.DoctorEmailAddress, doctorToAdd);
 
             // act
-            Action action = () => _doctorService.Remove(dOld.DoctorEmailAddress);
+            Action action = () => _doctorService.Remove(doctorToAdd.DoctorEmailAddress);
             // assert
             action.Should().NotThrow<Exception>();
-            Assert.Null(_doctorRepoMock.Object.GetById(dOld.DoctorEmailAddress));
+            Assert.Null(_doctorRepoMock.Object.GetById(doctorToAdd.DoctorEmailAddress));
 
             _doctorRepoMock.Verify(repo => repo
-                .Remove(It.Is<string>(id => id == dOld.DoctorEmailAddress)), Times.Once);
+                .Remove(It.Is<string>(id => id == doctorToAdd.DoctorEmailAddress)), Times.Once);
 
             _doctorValidatorMock.Verify(validator => validator
-                .ValidateEmail(It.Is<string>(id => id == dOld.DoctorEmailAddress)), Times.Once);
+                .ValidateEmail(It.Is<string>(id => id == doctorToAdd.DoctorEmailAddress)), Times.Once);
         }
 
-        [Fact]
-        public void Remove_WithNonExistingDoctor_shouldThrowException()
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.ValidDoctors)]
+        public void Remove_WithNonExistingDoctor_shouldThrowException(Doctor doctorToAdd)
         {
-            // arrange
-            var dOld = new Doctor() { DoctorEmailAddress = "email@gmail.com", FirstName = "doctor", LastName = "doctor", PhoneNumber = "22222222", IsAdmin = false };
-
             // act
-            Action action = () => _doctorService.Remove(dOld.DoctorEmailAddress);
+            Action action = () => _doctorService.Remove(doctorToAdd.DoctorEmailAddress);
             // assert
             action.Should().Throw<KeyNotFoundException>().WithMessage("This doctor does not exist");
 
             _doctorRepoMock.Verify(repo => repo
-                .Remove(It.Is<string>(id => id == dOld.DoctorEmailAddress)), Times.Never);
+                .Remove(It.Is<string>(id => id == doctorToAdd.DoctorEmailAddress)), Times.Never);
 
             _doctorValidatorMock.Verify(validator => validator
-                .ValidateEmail(It.Is<string>(email => email == dOld.DoctorEmailAddress)), Times.Once);
+                .ValidateEmail(It.Is<string>(email => email == doctorToAdd.DoctorEmailAddress)), Times.Once);
         }
 
 
         #endregion
+
+        public static IEnumerable<object[]> GetData(TestData testData)
+        {
+            return testData switch
+            {
+                TestData.GetAllValidDoctorsEmptyFilter => new List<object[]>
+                            {  
+                                new object[] { new List<Doctor>{ new Doctor() { DoctorEmailAddress = "lumby98@gmail.com" } }, new Filter() },
+                                new object[] { new List<Doctor>{ new Doctor() { DoctorEmailAddress = "lumby98@gmail.com" }, new Doctor(){ DoctorEmailAddress = "michael@hotmail.com" } }, new Filter() },
+                                new object[] { new List<Doctor>{ new Doctor() { DoctorEmailAddress = "lumby98@gmail.com" }, new Doctor(){ DoctorEmailAddress = "michael@hotmail.com" }, new Doctor() { DoctorEmailAddress = "flameDog@gmail.uk" } }, new Filter() },
+                            },
+
+                TestData.GetAllIndexOutOfBounds => new List<object[]>
+                            {  
+                                new object[] { new List<Doctor>{ new Doctor() { DoctorEmailAddress = "lumby98@gmail.com" }, new Doctor(){ DoctorEmailAddress = "michael@hotmail.com" }, new Doctor() { DoctorEmailAddress = "flameDog@gmail.uk" } }, new Filter() { CurrentPage = 2, ItemsPrPage = 3 } },
+                                new object[] { new List<Doctor>{ new Doctor() { DoctorEmailAddress = "lumby98@gmail.com" }, new Doctor(){ DoctorEmailAddress = "michael@hotmail.com" }, new Doctor() { DoctorEmailAddress = "flameDog@gmail.uk" }, new Doctor() { DoctorEmailAddress = "leFang@hotmail.fr" }, new Doctor() { DoctorEmailAddress = "hannahBarbera@yahoo.us" }, new Doctor() { DoctorEmailAddress = "nickGak@gmail.dk" } }, new Filter() { CurrentPage = 2, ItemsPrPage = 6 } },
+                                new object[] { new List<Doctor>{ new Doctor() { DoctorEmailAddress = "lumby98@gmail.com" }, new Doctor(){ DoctorEmailAddress = "michael@hotmail.com" }, new Doctor() { DoctorEmailAddress = "flameDog@gmail.uk" }, new Doctor() { DoctorEmailAddress = "leFang@hotmail.fr" }, new Doctor() { DoctorEmailAddress = "hannahBarbera@yahoo.us" }, new Doctor() { DoctorEmailAddress = "nickGak@gmail.dk" } }, new Filter() { CurrentPage = 3, ItemsPrPage = 3 } },
+                            },
+
+                TestData.GetAllNoDoctorsSatifyFilter => new List<object[]>
+                            {
+                                new object[] { new List<Doctor>{ new Doctor() { DoctorEmailAddress = "lumby98@gmail.com" }, new Doctor(){ DoctorEmailAddress = "michael@hotmail.com" }, new Doctor() { DoctorEmailAddress = "flameDog@gmail.uk" } }, new Filter() { SearchField = "FirstName", SearchText = "Franklin" } },
+                            },
+
+                TestData.GetByIdWithValidId => new List<object[]>
+                            {
+                                new object[] { new List<Doctor>{ new Doctor() { DoctorEmailAddress = "michael@hotmail.com" }, new Doctor() { DoctorEmailAddress = "flameDog@gmail.uk" } }, new Doctor() { DoctorEmailAddress = "lumby98@gmail.com" } },
+                                new object[] { new List<Doctor>{ new Doctor() { DoctorEmailAddress = "lumby98@gmail.com" }, new Doctor() { DoctorEmailAddress = "flameDog@gmail.uk" } }, new Doctor() { DoctorEmailAddress = "michael@hotmail.com" } },
+                                new object[] { new List<Doctor>{ new Doctor() { DoctorEmailAddress = "lumby98@gmail.com" }, new Doctor(){ DoctorEmailAddress = "michael@hotmail.com" } }, new Doctor() { DoctorEmailAddress = "flameDog@gmail.uk" } },
+                            },
+
+                TestData.ValidDoctors => new List<object[]>
+                            {
+                                new object[] { new Doctor() { FirstName = "Karl", LastName = "Mason", DoctorEmailAddress = "doctor@gmail.com", PhoneNumber = "23115177", IsAdmin = true } },
+                                new object[] { new Doctor() { FirstName = "Peter", LastName = "Holt", DoctorEmailAddress = "Porter@hotmail.dk", PhoneNumber = "12345678", IsAdmin = false } },
+                                new object[] { new Doctor() { FirstName = "Sandra", LastName = "Bullock", DoctorEmailAddress = "SB@Yahoo.uk", PhoneNumber = "09876543", IsAdmin = false } },
+                            },
+
+                TestData.EditedAndUneditedDoctors => new List<object[]>
+                            {
+                                new object[] { new Doctor() { FirstName = "Karl", LastName = "Mason", DoctorEmailAddress = "doctor@gmail.com", PhoneNumber = "23115177", IsAdmin = true }, new Doctor() { FirstName = "Charl", LastName = "Mason", DoctorEmailAddress = "doctor@gmail.com", PhoneNumber = "2342533", IsAdmin = false } },
+                                new object[] { new Doctor() { FirstName = "Peter", LastName = "Holt", DoctorEmailAddress = "Porter@hotmail.dk", PhoneNumber = "12345678", IsAdmin = false }, new Doctor() { FirstName = "Pyotr", LastName = "Holtz", DoctorEmailAddress = "Porter@hotmail.dk", PhoneNumber = "2344223", IsAdmin = false }, },
+                                new object[] { new Doctor() { FirstName = "Sandra", LastName = "Bullock", DoctorEmailAddress = "SB@Yahoo.uk", PhoneNumber = "09876543", IsAdmin = false }, new Doctor() { FirstName = "Sabrina", LastName = "Balrog", DoctorEmailAddress = "SB@Yahoo.uk", PhoneNumber = "34225255", IsAdmin = true } },
+                            },
+
+                TestData.EditedAndUneditedDoctorsInvalid => new List<object[]>
+                            {
+                                new object[] { new Doctor() { FirstName = "Karl", LastName = "Mason", DoctorEmailAddress = "doctor@gmail.com", PhoneNumber = "23115177", IsAdmin = true }, new Doctor() { FirstName = "Charl", LastName = "Mason", DoctorEmailAddress = "Smek@gmail.com", PhoneNumber = "2342533", IsAdmin = false } },
+                                new object[] { new Doctor() { FirstName = "Peter", LastName = "Holt", DoctorEmailAddress = "Porter@hotmail.dk", PhoneNumber = "12345678", IsAdmin = false }, new Doctor() { FirstName = "Pyotr", LastName = "Holtz", DoctorEmailAddress = "Poimd@hotmail.dk", PhoneNumber = "2344223", IsAdmin = false }, },
+                                new object[] { new Doctor() { FirstName = "Sandra", LastName = "Bullock", DoctorEmailAddress = "SB@Yahoo.uk", PhoneNumber = "09876543", IsAdmin = false }, new Doctor() { FirstName = "Sabrina", LastName = "Balrog", DoctorEmailAddress = "SBFF@Yahoo.uk", PhoneNumber = "34225255", IsAdmin = true } },
+                            },
+
+                _ => null,
+            };
+        }
+
+        public enum TestData
+        {
+            GetAllValidDoctorsEmptyFilter,
+            GetAllIndexOutOfBounds,
+            GetAllNoDoctorsSatifyFilter,
+            GetByIdWithValidId,
+            ValidDoctors,
+            EditedAndUneditedDoctors,
+            EditedAndUneditedDoctorsInvalid
+        }
     }
 }
