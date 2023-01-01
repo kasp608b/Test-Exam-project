@@ -214,7 +214,8 @@ namespace Infrastructure.UnitTests.ServiceTests
             {
                 _allAppointments.Add(appointment.AppointmentId, appointment);
             }
-            // the doctors in the repository
+
+            // the appointments in the repository
             var expected = new FilteredList<Appointment>()
                 {List = _allAppointments.Values.ToList(), TotalCount = _allAppointments.Count, FilterUsed = filter};
             
@@ -232,7 +233,7 @@ namespace Infrastructure.UnitTests.ServiceTests
         }
 
         [Fact]
-        public void GetAll_CurrentPageNegativ_ShouldThrowException()
+        public void GetAll_CurrentPageNegative_ShouldThrowException()
         {
             //arrange
             Appointment a1 = new Appointment() { AppointmentId = 1 };
@@ -270,14 +271,6 @@ namespace Infrastructure.UnitTests.ServiceTests
             {
                 _allAppointments.Add(appointment.AppointmentId, appointment);
             }
-
-            // the doctors in the repository
-            var expected = new FilteredList<Appointment>()
-                { List = _allAppointments.Values.ToList(), TotalCount = _allAppointments.Count, FilterUsed = filter };
-
-
-            expected.TotalCount = _allAppointments.Count;
-          
 
             // act
             Action action = () => _appointmentService.GetAll(filter);
@@ -535,6 +528,7 @@ namespace Infrastructure.UnitTests.ServiceTests
                                 new object[] { new List<Appointment> { new Appointment() { AppointmentId = 1 } , new Appointment() { AppointmentId = 2 } }, new Filter() {} },
                                 new object[] { new List<Appointment> { new Appointment() { AppointmentId = 1 } , new Appointment() { AppointmentId = 2 }, new Appointment() { AppointmentId = 3 } }, new Filter() {} }
                             },
+
                 TestData.GetAllIndexOutOfBounds => new List<object[]>
                             {
                                 new object[] { new List<Appointment> { new Appointment() { AppointmentId = 1 } , new Appointment() { AppointmentId = 2 }, new Appointment() { AppointmentId = 3 } }, new Filter() { CurrentPage = 2, ItemsPrPage = 3 } },
@@ -574,6 +568,7 @@ namespace Infrastructure.UnitTests.ServiceTests
                                 PatientCpr = "110695-0004" } },
 
                             },
+
                 TestData.EditWithValidAppointments => new List<object[]>
                             {
                                 new object[] {  new Appointment() {
