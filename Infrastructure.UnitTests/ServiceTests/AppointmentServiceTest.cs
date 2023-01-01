@@ -36,10 +36,7 @@ namespace Infrastructure.UnitTests.ServiceTests
         public AppointmentServiceTest()
         {
             #region Appointment
-
-            
-
-                
+        
             _allAppointments = new SortedDictionary<int, Appointment>();
             _appointmentRepoMock = new Mock<IRepository<Appointment, int>>();
             _appointmentValidatorMock = new Mock<IAppointmentValidator>();

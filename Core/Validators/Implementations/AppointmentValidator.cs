@@ -24,7 +24,7 @@ namespace Core.Services.Validators.Implementations
 
         }
 
-        private void EmailValidator(Appointment appointment)
+        public void EmailValidator(Appointment appointment)
         {
             if (appointment.DoctorEmailAddress == null)
             {
@@ -33,7 +33,7 @@ namespace Core.Services.Validators.Implementations
 
         }
 
-        private void DescriptionValidator(Appointment appointment)
+        public void DescriptionValidator(Appointment appointment)
         {
             if (appointment.Description != null)
             {
@@ -45,7 +45,7 @@ namespace Core.Services.Validators.Implementations
             }
         }
 
-        private void DurationValidator(Appointment appointment)
+        public void DurationValidator(Appointment appointment)
         {
             if (appointment.DurationInMin < 1)
             {
@@ -58,7 +58,7 @@ namespace Core.Services.Validators.Implementations
             }
         }
 
-        private void DateValidation(Appointment appointment)
+        public void DateValidation(Appointment appointment)
         {
             if (appointment.AppointmentDateTime == DateTime.Parse("0001 - 01 - 01T00: 00:00"))
             {
@@ -71,7 +71,7 @@ namespace Core.Services.Validators.Implementations
             }
         }
 
-        private void CreateIdValidation(Appointment appointment)
+        public void CreateIdValidation(Appointment appointment)
         {
             if (appointment.AppointmentId > 0)
             {
@@ -93,7 +93,7 @@ namespace Core.Services.Validators.Implementations
             EmailValidator(appointment);
         }
 
-        private void EditIdValidation(Appointment appointment)
+        public void EditIdValidation(Appointment appointment)
         {
             if (appointment.AppointmentId < 1)
             {
