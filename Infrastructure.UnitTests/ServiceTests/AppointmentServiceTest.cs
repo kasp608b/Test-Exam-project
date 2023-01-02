@@ -842,7 +842,7 @@ namespace Infrastructure.UnitTests.ServiceTests
             Action action = () => _appointmentService.Edit(aNew);
 
             // assert
-            action.Should().Throw<KeyNotFoundException>().WithMessage("This related entity does not exist");
+            action.Should().Throw<KeyNotFoundException>().WithMessage("Doctor does not exist in database");
 
             _appointmentRepoMock.Verify(repo => repo
                 .Edit(It.Is<Appointment>(appointment => appointment == aNew)), Times.Never);
