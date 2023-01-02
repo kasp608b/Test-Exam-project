@@ -27,6 +27,13 @@ namespace Core.Services.ApplicationServices.Implementations
 
         public FilteredList<Appointment> GetAll(Filter filter)
         {
+            /*
+            if ( filter.ItemsPrPage > 10000)
+            {
+                throw new InvalidDataException("items pr page can't be higher than 10.000");
+            }
+            */
+            
             if (filter.CurrentPage < 0 || filter.ItemsPrPage < 0)
             {
                 throw new InvalidDataException("current page and items pr page can't be negative");
@@ -67,7 +74,7 @@ namespace Core.Services.ApplicationServices.Implementations
 
             if (_doctorRepository.GetById(entity.DoctorEmailAddress) == null)
             {
-                throw new KeyNotFoundException("This related entity does not exist");
+                throw new KeyNotFoundException("Doctor does not exist in database");
             }
 
 

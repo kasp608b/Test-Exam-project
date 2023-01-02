@@ -280,6 +280,7 @@ namespace Infrastructure.UnitTests.ServiceTests
         }
 
 
+
         #endregion
 
         #region GetById
@@ -360,7 +361,7 @@ namespace Infrastructure.UnitTests.ServiceTests
             Action action = () => _appointmentService.Add(a);
 
             // assert
-            action.Should().Throw<KeyNotFoundException>().WithMessage("This related entity does not exist");
+            action.Should().Throw<KeyNotFoundException>().WithMessage("Doctor does not exist in database");
 
             _appointmentRepoMock.Verify(repo => repo
                 .Add(It.Is<Appointment>(appointment => appointment == a)), Times.Never);
@@ -369,6 +370,396 @@ namespace Infrastructure.UnitTests.ServiceTests
                 .CreateValidation(It.Is<Appointment>(appointment => appointment == a)), Times.Once);
 
         }
+        #region Specification-based testing add
+        //case 1
+        [Fact]
+        public void Add_StartDateBeforeMaxHasDoctorNoCprNp_shouldAddAppointment()
+        {
+            //arrange
+            _allDoctors.Add("Karl@gmail.com", new Doctor() { DoctorEmailAddress = "Karl@gmail.com" });
+  
+            _allPatients.Add("110695-0004", new Patient() { PatientCPR = "110695-0004" });
+
+            _allAppointments.Add(1,new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(16),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+               
+            });
+            _allAppointments.Add(2, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(31),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            });
+
+
+            //act
+            Appointment appointmentToAdd = new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            };
+            
+            Action action = () => _appointmentService.Add(appointmentToAdd);
+
+            //assert
+            action.Should().NotThrow<Exception>();
+            Assert.Contains(appointmentToAdd, _allAppointments.Values);
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Add(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .CreateValidation(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+        }
+        //case 2
+        [Fact]
+        public void Add_StartDateBeforeMinHasDoctorNoCprNp_shouldAddAppointment()
+        {
+            //arrange
+            _allDoctors.Add("Karl@gmail.com", new Doctor() { DoctorEmailAddress = "Karl@gmail.com" });
+
+            _allPatients.Add("110695-0004", new Patient() { PatientCPR = "110695-0004" });
+
+            _allAppointments.Add(1, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(16),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+
+            });
+            _allAppointments.Add(2, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(31),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            });
+
+
+            //act
+            Appointment appointmentToAdd = new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(1),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            };
+
+            Action action = () => _appointmentService.Add(appointmentToAdd);
+
+            //assert
+            action.Should().NotThrow<Exception>();
+            Assert.Contains(appointmentToAdd, _allAppointments.Values);
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Add(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .CreateValidation(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+        }
+        //case 3
+        [Fact]
+        public void Add_StartDateAfterMaxHasDoctorNoCprNp_shouldAddAppointment()
+        {
+            //arrange
+            _allDoctors.Add("Karl@gmail.com", new Doctor() { DoctorEmailAddress = "Karl@gmail.com" });
+
+            _allPatients.Add("110695-0004", new Patient() { PatientCPR = "110695-0004" });
+
+            _allAppointments.Add(1, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(16),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+
+            });
+            _allAppointments.Add(2, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(31),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            });
+
+
+            //act
+            Appointment appointmentToAdd = new Appointment()
+            {
+                AppointmentDateTime = DateTime.MaxValue.AddMinutes(-15),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            };
+
+            Action action = () => _appointmentService.Add(appointmentToAdd);
+
+            //assert
+            action.Should().NotThrow<Exception>();
+            Assert.Contains(appointmentToAdd, _allAppointments.Values);
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Add(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .CreateValidation(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+        }
+        //case 4
+        [Fact]
+        public void Add_StartDateAfterMinHasDoctorNoCprNp_shouldAddAppointment()
+        {
+            //arrange
+            _allDoctors.Add("Karl@gmail.com", new Doctor() { DoctorEmailAddress = "Karl@gmail.com" });
+
+            _allPatients.Add("110695-0004", new Patient() { PatientCPR = "110695-0004" });
+
+            _allAppointments.Add(1, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(16),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+
+            });
+            _allAppointments.Add(2, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(31),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            });
+
+
+            //act
+            Appointment appointmentToAdd = new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(46),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            };
+
+            Action action = () => _appointmentService.Add(appointmentToAdd);
+
+            //assert
+            action.Should().NotThrow<Exception>();
+            Assert.Contains(appointmentToAdd, _allAppointments.Values);
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Add(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .CreateValidation(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+        }
+        
+        //case 5
+        [Fact]
+        public void Add_StartDateHasAppointmentsMinHasDoctorNoCprNp_shouldThrowExeptio()
+        {
+            //arrange
+            _allDoctors.Add("Karl@gmail.com", new Doctor() { DoctorEmailAddress = "Karl@gmail.com" });
+
+            _allPatients.Add("110695-0004", new Patient() { PatientCPR = "110695-0004" });
+
+            _allAppointments.Add(1, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(16),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+
+            });
+            _allAppointments.Add(2, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(31),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            });
+
+
+            //act
+            Appointment appointmentToAdd = new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(31),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            };
+
+            Action action = () => _appointmentService.Add(appointmentToAdd);
+
+            //assert
+            action.Should().Throw<ArgumentException>().WithMessage("An appointment for this doctor in this time-frame is already taken");
+            
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Add(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Never);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .CreateValidation(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+        }
+
+        //case 6
+        [Fact]
+        public void Add_StartDateHasAppointmentsMaxHasDoctorNoCprNp_shouldThrowExeption()
+        {
+            //arrange
+            _allDoctors.Add("Karl@gmail.com", new Doctor() { DoctorEmailAddress = "Karl@gmail.com" });
+
+            _allPatients.Add("110695-0004", new Patient() { PatientCPR = "110695-0004" });
+
+            _allAppointments.Add(1, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(16),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+
+            });
+            _allAppointments.Add(2, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(31),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            });
+
+
+            //act
+            Appointment appointmentToAdd = new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(16),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            };
+
+            Action action = () => _appointmentService.Add(appointmentToAdd);
+
+            //assert
+            action.Should().Throw<ArgumentException>().WithMessage("An appointment for this doctor in this time-frame is already taken");
+
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Add(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Never);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .CreateValidation(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+        }
+        //case 7 + 10
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.StartDateAfterNoDoctorNoCprNp)]
+        public void Add_StartDateAfterNoDoctorNoCprNp_shouldThrowExeption(Appointment appointmentToAdd)
+        {
+            //arrange
+            _allDoctors.Add("Karl@gmail.com", new Doctor() { DoctorEmailAddress = "Karl@gmail.com" });
+
+            _allPatients.Add("110695-0004", new Patient() { PatientCPR = "110695-0004" });
+
+            _allAppointments.Add(1, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(16),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+
+            });
+            _allAppointments.Add(2, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(31),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            });
+
+
+            //act
+          
+            Action action = () => _appointmentService.Add(appointmentToAdd);
+
+            //assert
+            action.Should().Throw<KeyNotFoundException>().WithMessage("Doctor does not exist in database");
+
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Add(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Never);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .CreateValidation(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+        }
+
+        //case 8 + 11
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.StartDateAfterDoctorCprYp)]
+        public void Add_StartDateAfterDoctorCprYp_shouldAddAppointment(Appointment appointmentToAdd)
+        {
+            //arrange
+            _allDoctors.Add("Karl@gmail.com", new Doctor() { DoctorEmailAddress = "Karl@gmail.com" });
+
+            _allPatients.Add("110695-0004", new Patient() { PatientCPR = "110695-0004" });
+
+            _allAppointments.Add(1, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(16),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+
+            });
+            _allAppointments.Add(2, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(31),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            });
+
+
+            //act
+            Action action = () => _appointmentService.Add(appointmentToAdd);
+
+            //assert
+ 
+            action.Should().NotThrow<Exception>();
+            Assert.Contains(appointmentToAdd, _allAppointments.Values);
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Add(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .CreateValidation(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+        }
+
+        //case 9 + 12 
+        [Theory]
+        [MemberData(nameof(GetData), parameters: TestData.StartDateAfterMaxHasDoctorYCprNp)]
+        public void Add_StartDateAfterMaxHasDoctorYCprNp_shouldThrowExeption(Appointment appointmentToAdd)
+        {
+            //arrange
+            _allDoctors.Add("Karl@gmail.com", new Doctor() { DoctorEmailAddress = "Karl@gmail.com" });
+
+            _allPatients.Add("110695-0004", new Patient() { PatientCPR = "110695-0004" });
+
+            _allAppointments.Add(1, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(16),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+
+            });
+            _allAppointments.Add(2, new Appointment()
+            {
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(31),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+            });
+
+
+            //act
+            Action action = () => _appointmentService.Add(appointmentToAdd);
+            
+            //assert
+            action.Should().Throw<KeyNotFoundException>().WithMessage("This related entity does not exist");
+
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Add(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Never);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .CreateValidation(It.Is<Appointment>(appointment => appointment == appointmentToAdd)), Times.Once);
+        }
+
+
+
+
+        #endregion
 
         #endregion
 
@@ -512,7 +903,11 @@ namespace Infrastructure.UnitTests.ServiceTests
 
         }
 
+
+
         #endregion
+
+        
 
         public static IEnumerable<object[]> GetData(TestData testData)
         {
@@ -610,19 +1005,70 @@ namespace Infrastructure.UnitTests.ServiceTests
 
                             },
 
+                TestData.StartDateAfterNoDoctorNoCprNp => new List<object[]>
+                            {
+                                new object[] {  new Appointment() {
+                                    PatientCpr = "42234234",
+                                    AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(16),
+                                    DurationInMin = 15,
+                                    DoctorEmailAddress = "@",},
+                                },
+                                new object[] {  new Appointment() {
+                                    PatientCpr = "42234234",
+                                    AppointmentDateTime = DateTime.Now.AddDays(1),
+                                    DurationInMin = 15,
+                                    DoctorEmailAddress = "@",},
+                                },
+                            },
+                TestData.StartDateAfterDoctorCprYp => new List<object[]>
+                            {
+                                new object[] {  new Appointment() {
+                                    AppointmentDateTime = DateTime.MaxValue.AddMinutes(-15),
+                                    DurationInMin = 15,
+                                    DoctorEmailAddress = "Karl@gmail.com"},
+                                },
+                                new object[] {  new Appointment() {
+                                    AppointmentDateTime = DateTime.Now.AddDays(1),
+                                    DurationInMin = 15,
+                                    DoctorEmailAddress = "Karl@gmail.com"},
+                                },
+                            },
+                TestData.StartDateAfterMaxHasDoctorYCprNp => new List<object[]>
+                            {
+                                new object[] {  new Appointment() {
+                                    PatientCpr = "42234234",
+                                    AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(16),
+                                    DurationInMin = 15,
+                                    DoctorEmailAddress = "Karl@gmail.com",},
+                                },
+                                new object[] {  new Appointment() {
+                                    PatientCpr = "42234234",
+                                    AppointmentDateTime = DateTime.Now.AddDays(1),
+                                    DurationInMin = 15,
+                                    DoctorEmailAddress = "Karl@gmail.com",},
+                                },
+                            },
 
 
                 _ => null,
             };
         }
-
+        /*
+         * PatientCpr = "42234234",
+                AppointmentDateTime = DateTime.Now.AddDays(2).AddMinutes(16),
+                DurationInMin = 15,
+                DoctorEmailAddress = "Karl@gmail.com",
+         */
         public enum TestData
         {
             GetAllValidAppointmentsEmptyFilter,
             GetAllIndexOutOfBounds,
             GetByIdValidIds,
             AddWithValidAppointments,
-            EditWithValidAppointments
+            EditWithValidAppointments,
+            StartDateAfterNoDoctorNoCprNp,
+            StartDateAfterDoctorCprYp,
+            StartDateAfterMaxHasDoctorYCprNp
         }
 
 
