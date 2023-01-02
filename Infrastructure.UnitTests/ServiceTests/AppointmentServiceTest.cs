@@ -26,7 +26,7 @@ namespace Infrastructure.UnitTests.ServiceTests
 
         private readonly Mock<IRepository<Doctor, string>> _doctorRepoMock;
 
-       
+
         private Mock<IRepository<Patient, string>> _patientRepoMock;
 
 
@@ -37,7 +37,7 @@ namespace Infrastructure.UnitTests.ServiceTests
         public AppointmentServiceTest()
         {
             #region Appointment
-        
+
             _allAppointments = new SortedDictionary<int, Appointment>();
             _appointmentRepoMock = new Mock<IRepository<Appointment, int>>();
             _appointmentValidatorMock = new Mock<IAppointmentValidator>();
@@ -65,8 +65,8 @@ namespace Infrastructure.UnitTests.ServiceTests
             _appointmentRepoMock
                 .Setup(repo => repo
                     .GetAll(It.IsAny<Filter>()))
-                .Returns<Filter>((filter) => new FilteredList<Appointment>(){List = _allAppointments.Values.ToList(), TotalCount = _allAppointments.Count, FilterUsed = filter});
-            
+                .Returns<Filter>((filter) => new FilteredList<Appointment>() { List = _allAppointments.Values.ToList(), TotalCount = _allAppointments.Count, FilterUsed = filter });
+
             _appointmentRepoMock
                 .Setup(repo => repo
                     .GetById(It.IsAny<int>()))
@@ -82,9 +82,9 @@ namespace Infrastructure.UnitTests.ServiceTests
 
             #region Doctor
 
-            
 
-                
+
+
             _allDoctors = new SortedDictionary<string, Doctor>();
             _doctorRepoMock = new Mock<IRepository<Doctor, string>>();
 
@@ -131,7 +131,7 @@ namespace Infrastructure.UnitTests.ServiceTests
 
             _patientRepoMock = new Mock<IRepository<Patient, string>>();
 
-           
+
 
 
             _patientRepoMock
@@ -203,7 +203,78 @@ namespace Infrastructure.UnitTests.ServiceTests
         }
 
         #region GetAll
-        
+
+        #region Multiple condition coverage tests
+
+        [Fact]
+        public void GetAll_CurrentPageItemsPrPageNotNegative_ShouldNotThrowException()
+        {
+
+            //arrange
+            Appointment a1 = new Appointment() { AppointmentId = 1 };
+            Appointment a2 = new Appointment() { AppointmentId = 2 };
+            var appointments = new List<Appointment>() { a1, a2 };
+
+            Filter filter = new Filter() { ItemsPrPage = 1, CurrentPage = 1 };
+
+            foreach (var appointment in appointments)
+            {
+                _allAppointments.Add(appointment.AppointmentId, appointment);
+            }
+
+
+            // the appointments in the repository
+            var expected = new FilteredList<Appointment>()
+            { List = _allAppointments.Values.ToList(), TotalCount = _allAppointments.Count, FilterUsed = filter };
+
+
+            expected.TotalCount = _allAppointments.Count;
+
+
+            // act
+            var result = _appointmentService.GetAll(filter);
+
+            // assert
+            Assert.Equal(expected.List, result.List);
+            _appointmentRepoMock.Verify(repo => repo.GetAll(It.Is<Filter>(aFilter => aFilter == filter)), Times.Once);
+
+        }
+
+
+        [Theory]
+        [InlineData(1, -1)]
+        [InlineData(-1, 1)]
+        public void GetAll_CurrentPageNegative_ShouldThrowException(int currentPage, int itemsPrPage )
+        {
+            //arrange
+            Appointment a1 = new Appointment() { AppointmentId = 1 };
+            Appointment a2 = new Appointment() { AppointmentId = 2 };
+            var appointments = new List<Appointment>() { a1, a2 };
+
+            Filter filter = new Filter() { CurrentPage = currentPage, ItemsPrPage =  itemsPrPage };
+
+            _allAppointments.Add(a1.AppointmentId, a1);
+            _allAppointments.Add(a2.AppointmentId, a2);
+            // the doctors in the repository
+            var expected = new FilteredList<Appointment>()
+            { List = _allAppointments.Values.ToList(), TotalCount = _allAppointments.Count, FilterUsed = filter };
+
+
+            expected.TotalCount = _allAppointments.Count;
+
+
+            // act
+            Action action = () => _appointmentService.GetAll(filter);
+
+            // assert
+            action.Should().Throw<InvalidDataException>()
+                .WithMessage("current page and items pr page can't be negative");
+            _appointmentRepoMock.Verify(repo => repo.GetAll(It.Is<Filter>(aFilter => aFilter == filter)), Times.Never);
+
+        }
+
+        #endregion
+
         [Theory]
         [MemberData(nameof(GetData), parameters: TestData.GetAllValidAppointmentsEmptyFilter)]
         public void GetAll_EmptyFilter_ShouldNotThrowException(List<Appointment> appointments, Filter filter)
@@ -231,35 +302,6 @@ namespace Infrastructure.UnitTests.ServiceTests
 
         }
 
-        [Fact]
-        public void GetAll_CurrentPageNegative_ShouldThrowException()
-        {
-            //arrange
-            Appointment a1 = new Appointment() { AppointmentId = 1 };
-            Appointment a2 = new Appointment() { AppointmentId = 2 };
-            var appointments = new List<Appointment>() { a1, a2 };
-
-            Filter filter = new Filter() {CurrentPage = -1};
-
-            _allAppointments.Add(a1.AppointmentId, a1);
-            _allAppointments.Add(a2.AppointmentId, a2);
-            // the doctors in the repository
-            var expected = new FilteredList<Appointment>()
-                { List = _allAppointments.Values.ToList(), TotalCount = _allAppointments.Count, FilterUsed = filter };
-
-
-            expected.TotalCount = _allAppointments.Count;
-            
-
-            // act
-            Action action = () => _appointmentService.GetAll(filter);
-
-            // assert
-            action.Should().Throw<InvalidDataException>()
-                .WithMessage("current page and items pr page can't be negative");
-            _appointmentRepoMock.Verify(repo => repo.GetAll(It.Is<Filter>(aFilter => aFilter == filter)), Times.Never);
-
-        }
 
         [Theory]
         [MemberData(nameof(GetData), parameters: TestData.GetAllIndexOutOfBounds)]
@@ -1257,6 +1299,12 @@ namespace Infrastructure.UnitTests.ServiceTests
                                 },
                             },
 
+                TestData.GetAllCurrentPageItemsPrPage => new List<object[]>
+                            {
+                                new object[] { new List<Appointment> { new Appointment() { AppointmentId = 1 } , new Appointment() { AppointmentId = 2 }, new Appointment() { AppointmentId = 3 } }, new Filter() { CurrentPage = 1, ItemsPrPage = 3 } },
+                                new object[] { new List<Appointment> { new Appointment() { AppointmentId = 1 } , new Appointment() { AppointmentId = 2 }, new Appointment() { AppointmentId = 3 } , new Appointment() { AppointmentId = 4 }, new Appointment() { AppointmentId = 5 }, new Appointment() { AppointmentId = 6 } }, new Filter() { CurrentPage = 2, ItemsPrPage = 3 } },
+                            },
+
 
                 _ => null,
             };
@@ -1276,7 +1324,8 @@ namespace Infrastructure.UnitTests.ServiceTests
             EditWithValidAppointments,
             StartDateAfterNoDoctorNoCprNp,
             StartDateAfterDoctorCprYp,
-            StartDateAfterMaxHasDoctorYCprNp
+            StartDateAfterMaxHasDoctorYCprNp,
+            GetAllCurrentPageItemsPrPage
         }
 
 
