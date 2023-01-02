@@ -104,8 +104,8 @@ namespace Core.Services.ApplicationServices.Implementations
 
         public Appointment Edit(Appointment entity)
         {
-            _appointmentValidator.EditValidation(entity);
-         
+            _appointmentValidator.EditValidation(entity); //The Edit validation makes sure that the appointment has a doctor email address and patientCPR
+
             var previousAppointment = _appointmentRepository.GetById(entity.AppointmentId);
             if (previousAppointment == null)
             {
@@ -117,7 +117,7 @@ namespace Core.Services.ApplicationServices.Implementations
             {
                 if (_doctorRepository.GetById(entity.DoctorEmailAddress) == null)
                 {
-                    throw new KeyNotFoundException("This related entity does not exist");
+                    throw new KeyNotFoundException("Doctor does not exist in database");
                 }
             }
 
@@ -125,7 +125,7 @@ namespace Core.Services.ApplicationServices.Implementations
             {
                 if (_patientRepository.GetById(entity.PatientCpr) == null)
                 {
-                    throw new KeyNotFoundException("This related entity does not exist");
+                    throw new KeyNotFoundException("Patient does not exist in database");
                 }
             }
 
