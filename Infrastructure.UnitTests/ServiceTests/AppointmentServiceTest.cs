@@ -12,6 +12,7 @@ using Core.Services.Validators.Interfaces;
 using FluentAssertions;
 using Moq;
 using Xunit;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Infrastructure.UnitTests.ServiceTests
 {
@@ -71,6 +72,7 @@ namespace Infrastructure.UnitTests.ServiceTests
                     .GetById(It.IsAny<int>()))
                 .Returns<int>((id) => _allAppointments
                     .ContainsKey(id) ? _allAppointments[id] : null);
+
 
             _appointmentRepoMock
                 .Setup(repo => repo
@@ -764,6 +766,212 @@ namespace Infrastructure.UnitTests.ServiceTests
         #endregion
 
         #region Edit
+
+        #region Structure based tests: Path testing tests
+
+        //Testcase 1
+        [Fact]
+        public void Edit_AppointmentDoesNotExist_ShouldThrowException()
+        {
+            //arrange
+            DateTime date = DateTime.Now.AddDays(5);
+            Appointment aNew = new Appointment()
+            {
+                AppointmentId = 0,
+                AppointmentDateTime = date,
+                DurationInMin = 15,
+                Description = "description",
+                DoctorEmailAddress = "peter@hotmail.dk",
+                PatientCpr = "1206014152"
+            };
+
+            // act
+            Action action = () => _appointmentService.Edit(aNew);
+
+            // assert
+            action.Should().Throw<KeyNotFoundException>().WithMessage("appointment does not exists");
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Edit(It.Is<Appointment>(appointment => appointment == aNew)), Times.Never);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .EditValidation(It.Is<Appointment>(appointment => appointment == aNew)), Times.Once);
+
+        }
+
+        //Testcase 2
+        [Fact]
+        public void Edit_DoctorDoesNotExist_ShouldThrowException()
+        {
+            //arrange
+            DateTime date = DateTime.Now.AddDays(5);
+            Appointment aNew = new Appointment()
+            {
+                AppointmentId = 1,
+                AppointmentDateTime = date,
+                DurationInMin = 15,
+                Description = "description",
+                DoctorEmailAddress = "doesntexist@hotmail.dk",
+                PatientCpr = "1206014152"
+            };
+
+            _allAppointments.Add(aNew.AppointmentId, aNew);
+
+            // act
+            Action action = () => _appointmentService.Edit(aNew);
+
+            // assert
+            action.Should().Throw<KeyNotFoundException>().WithMessage("Doctor does not exist in database");
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Edit(It.Is<Appointment>(appointment => appointment == aNew)), Times.Never);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .EditValidation(It.Is<Appointment>(appointment => appointment == aNew)), Times.Once);
+
+        }
+
+        //Testcase 3
+        [Fact]
+        public void Edit_AppointmentTaken_ShouldThrowException()
+        {
+            //arrange
+
+            DateTime date = DateTime.Now.AddDays(10);
+            Appointment aNew = new Appointment()
+            {
+                AppointmentId = 1,
+                AppointmentDateTime = date,
+                DurationInMin = 15,
+                Description = "description",
+                DoctorEmailAddress = "peter@hotmail.dk",
+                PatientCpr = "1206014152"
+            };
+
+            Appointment aTaken = new Appointment()
+            {
+                AppointmentId = 2,
+                AppointmentDateTime = date,
+                DurationInMin = 15,
+                Description = "description",
+                DoctorEmailAddress = "peter@hotmail.dk",
+                PatientCpr = "3123123"
+            };
+
+            _allPatients.Add("1206014152", new Patient() { PatientCPR = "1206014152" });
+
+            _allDoctors.Add("peter@hotmail.dk", new Doctor() { DoctorEmailAddress = "peter@hotmail.dk" });
+
+            _allAppointments.Add(aNew.AppointmentId, aNew);
+
+            _allAppointments.Add(aTaken.AppointmentId, aTaken);
+
+            // act
+            Action action = () => _appointmentService.Edit(aNew);
+
+            // assert
+            action.Should().Throw<ArgumentException>().WithMessage("An appointment for this doctor in this time-frame is already taken");
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Edit(It.Is<Appointment>(appointment => appointment == aNew)), Times.Never);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .EditValidation(It.Is<Appointment>(appointment => appointment == aNew)), Times.Once);
+
+        }
+
+        //Testcase 4
+        [Fact]
+        public void Edit_PatientDoesNotExist_ShouldThrowException()
+        {
+            //arrange
+
+            DateTime date = DateTime.Now.AddDays(5);
+            Appointment aNew = new Appointment()
+            {
+                AppointmentId = 1,
+                AppointmentDateTime = date,
+                DurationInMin = 15,
+                Description = "description",
+                DoctorEmailAddress = null,
+                PatientCpr = "123456789"
+            };
+
+            Appointment aTaken = new Appointment()
+            {
+                AppointmentId = 2,
+                AppointmentDateTime = date,
+                DurationInMin = 15,
+                Description = "description",
+                DoctorEmailAddress = "peter@hotmail.dk",
+                PatientCpr = "3123123"
+            };
+
+            _allPatients.Add("1206014152", new Patient() { PatientCPR = "1206014152" });
+
+            _allDoctors.Add("peter@hotmail.dk", new Doctor() { DoctorEmailAddress = "peter@hotmail.dk" });
+
+            _allAppointments.Add(aNew.AppointmentId, aNew);
+
+            _allAppointments.Add(aTaken.AppointmentId, aTaken);
+
+            // act
+            Action action = () => _appointmentService.Edit(aNew);
+
+            // assert
+            action.Should().Throw<KeyNotFoundException>().WithMessage("Patient does not exist in database");
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Edit(It.Is<Appointment>(appointment => appointment == aNew)), Times.Never);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .EditValidation(It.Is<Appointment>(appointment => appointment == aNew)), Times.Once);
+
+        }
+
+        //Testcase 5
+        [Fact]
+        public void Edit_Normal_ShouldNotThrowException()
+        {
+            //arrange
+
+            DateTime date = DateTime.Now.AddDays(5);
+            Appointment aNew = new Appointment()
+            {
+                AppointmentId = 1,
+                AppointmentDateTime = date,
+                DurationInMin = 15,
+                Description = "description",
+                DoctorEmailAddress = null,
+                PatientCpr = "123456789"
+            };
+
+
+            _allPatients.Add("1206014152", new Patient() { PatientCPR = "1206014152" });
+
+            _allDoctors.Add("peter@hotmail.dk", new Doctor() { DoctorEmailAddress = "peter@hotmail.dk" });
+
+            _allAppointments.Add(aNew.AppointmentId, aNew);
+
+             aNew.PatientCpr = null; 
+
+            // act
+            Action action = () => _appointmentService.Edit(aNew);
+
+            // assert
+            action.Should().NotThrow<Exception>();
+            Assert.Equal(_appointmentRepoMock.Object.GetById(aNew.AppointmentId), aNew);
+
+            _appointmentRepoMock.Verify(repo => repo
+                .Edit(It.Is<Appointment>(appointment => appointment == aNew)), Times.Once);
+
+            _appointmentValidatorMock.Verify(validator => validator
+                .EditValidation(It.Is<Appointment>(appointment => appointment == aNew)), Times.Once);
+
+        }
+
+
+        #endregion
 
         [Theory]
         [MemberData(nameof(GetData), parameters: TestData.EditWithValidAppointments)]
